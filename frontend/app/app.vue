@@ -29,8 +29,8 @@ const questions: { key: JournalKey; eyebrow: string; title: string; help: string
 ]
 
 let audioContext: AudioContext | null = null
-let ambientGain: GainNode | null = null
-let ambientNodes: OscillatorNode[] = []
+let ambientAudio: HTMLAudioElement | null = null
+let ambientFadeTimer: number | null = null
 
 const currentQuestion = computed(() => questions[stage.value - 7] ?? questions[0]!)
 const displayTitle = computed(() => currentQuestion.value?.title.replace('{name}', confirmedName.value))
@@ -62,36 +62,53 @@ function playEffect(kind: 'tap' | 'paper' | 'complete' = 'tap') {
 }
 
 function startAmbient() {
-  const ctx = ensureAudio()
-  if (!ctx || ambientGain) return
-  ambientGain = ctx.createGain()
-  ambientGain.gain.setValueAtTime(0.0001, ctx.currentTime)
-  ambientGain.gain.exponentialRampToValueAtTime(0.018, ctx.currentTime + 1.5)
-  ambientGain.connect(ctx.destination)
-  ambientNodes = [196, 246.94, 293.66].map((frequency, index) => {
-    const osc = ctx.createOscillator()
-    const noteGain = ctx.createGain()
-    osc.type = 'sine'
-    osc.frequency.value = frequency
-    noteGain.gain.value = index === 0 ? 0.55 : 0.22
-    osc.connect(noteGain).connect(ambientGain!)
-    osc.start()
-    return osc
+  if (!import.meta.client || ambientAudio) return
+  const audio = new Audio('/audio/mindful-piano.mp3')
+  audio.loop = true
+  audio.volume = 0
+  audio.addEventListener('timeupdate', () => {
+    if (audio.currentTime >= 95) audio.currentTime = 0
+  })
+  ambientAudio = audio
+  void audio.play().then(() => fadeAmbientTo(0.22, 1500)).catch(() => {
+    ambientAudio = null
   })
 }
 
+function fadeAmbientTo(target: number, duration: number, onComplete?: () => void) {
+  if (!ambientAudio) return
+  if (ambientFadeTimer !== null) window.clearInterval(ambientFadeTimer)
+  const audio = ambientAudio
+  const startVolume = audio.volume
+  const startedAt = performance.now()
+  ambientFadeTimer = window.setInterval(() => {
+    const progress = Math.min((performance.now() - startedAt) / duration, 1)
+    audio.volume = startVolume + (target - startVolume) * progress
+    if (progress === 1) {
+      if (ambientFadeTimer !== null) window.clearInterval(ambientFadeTimer)
+      ambientFadeTimer = null
+      onComplete?.()
+    }
+  }, 50)
+}
+
 function stopAmbient() {
-  if (!audioContext || !ambientGain) return
-  const gain = ambientGain
-  gain.gain.cancelScheduledValues(audioContext.currentTime)
-  gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), audioContext.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.6)
-  window.setTimeout(() => {
-    ambientNodes.forEach(node => node.stop())
-    ambientNodes = []
-    gain.disconnect()
-  }, 650)
-  ambientGain = null
+  if (!ambientAudio) return
+  const audio = ambientAudio
+  fadeAmbientTo(0, 600, () => {
+    audio.pause()
+    audio.currentTime = 0
+    if (ambientAudio === audio) ambientAudio = null
+  })
+}
+
+function disposeAmbient() {
+  if (ambientFadeTimer !== null) {
+    window.clearInterval(ambientFadeTimer)
+    ambientFadeTimer = null
+  }
+  ambientAudio?.pause()
+  ambientAudio = null
 }
 
 watch(soundOn, value => value ? startAmbient() : stopAmbient())
@@ -106,6 +123,8 @@ function next(sound: 'tap' | 'paper' = 'tap') {
 }
 
 function startJourney() {
+  lessonOne.value = 0
+  lessonTwo.value = 0
   if (soundOn.value) startAmbient()
   playEffect()
   stage.value = 1
@@ -153,6 +172,12 @@ function addCustomTag(key: 'emotions' | 'behaviors') {
   playEffect()
 }
 
+function availableTags(key: 'emotions' | 'behaviors') {
+  const suggested = key === 'emotions' ? emotions : behaviors
+  const selected = journal[key] as string[]
+  return [...suggested, ...selected.filter(tag => !suggested.includes(tag))]
+}
+
 function useHardReply() {
   journal.reply = '這真的很難，我還不知道要怎麼回答。'
   playEffect('paper')
@@ -169,7 +194,7 @@ function displayAnswer(key: JournalKey) {
   return Array.isArray(value) ? value.map(item => `#${item}`).join('　') || '今天沒有回答' : value || '今天沒有回答'
 }
 
-onBeforeUnmount(() => stopAmbient())
+onBeforeUnmount(() => disposeAmbient())
 </script>
 
 <template>
@@ -196,7 +221,7 @@ onBeforeUnmount(() => stopAmbient())
 
     <Transition name="page" mode="out-in">
       <section v-if="stage === 0" key="welcome" class="scene welcome-scene">
-        <StoryCharacters scene="welcome" />
+        <StoryCharactersImage scene="welcome" />
         <p class="eyebrow">EMBRACE YOUR INNER CRITIC</p>
         <h1>歡迎來到<br><em>你的內在地圖。</em></h1>
         <p class="lead">這裡沒有標準答案，也不需要急著一次把所有事情想清楚。</p>
@@ -219,10 +244,11 @@ onBeforeUnmount(() => stopAmbient())
       <section v-else-if="stage === 2" :key="`lesson-one-${lessonOne}`" class="scene lesson-scene">
         <p class="eyebrow">認識那個熟悉的聲音 · {{ lessonOne + 1 }}/3</p>
         <div class="character-stage" :class="`lesson-${lessonOne}`">
-          <StoryCharacters :scene="lessonOne === 0 ? 'approach' : lessonOne === 1 ? 'talk' : 'separate'" />
-          <template v-if="lessonOne === 1">
+          <StoryCharactersImage :scene="lessonOne === 0 ? 'approach' : lessonOne === 1 ? 'talk' : 'separate'" />
+          <template v-if="lessonOne >= 1">
             <span class="speech s1">你怎麼又搞砸了</span><span class="speech s2">還不夠好</span>
-            <span class="speech s3">不可以停下來</span><span class="speech s4">你總是讓人失望</span>
+            <span class="speech s3">不可以停下來</span><span class="speech s4">沒有人想聽你說話</span>
+            <span class="speech s5">你那麼懶惰，做不到的</span><span class="speech s6">你總是讓人失望</span>
           </template>
           <div v-if="lessonOne === 2" class="breathing-space">這裡，多了一點空間</div>
         </div>
@@ -236,7 +262,7 @@ onBeforeUnmount(() => stopAmbient())
       </section>
 
       <section v-else-if="stage === 3" key="name" class="scene compact-scene">
-        <StoryCharacters scene="name" compact />
+        <StoryCharactersImage scene="name" compact />
         <p class="eyebrow">讓聲音變得可辨認</p>
         <h2>如果要替這個聲音取一個名字，<br>你想叫他什麼？</h2>
         <p class="lead narrow">替他取名，不是為了趕走他，只是幫助我們更容易知道現在是誰在說話。</p>
@@ -286,12 +312,12 @@ onBeforeUnmount(() => stopAmbient())
 
         <div v-if="currentQuestion.key === 'emotions' || currentQuestion.key === 'behaviors'" class="tag-area">
           <div class="tag-cloud">
-            <button v-for="tag in currentQuestion.key === 'emotions' ? emotions : behaviors" :key="tag" class="tag" :class="{ selected: (journal[currentQuestion.key] as string[]).includes(tag) }" @click="toggleTag(currentQuestion.key as 'emotions' | 'behaviors', tag)">#{{ tag }}</button>
+            <button v-for="tag in availableTags(currentQuestion.key as 'emotions' | 'behaviors')" :key="tag" type="button" class="tag" :class="{ selected: (journal[currentQuestion.key] as string[]).includes(tag) }" @click="toggleTag(currentQuestion.key as 'emotions' | 'behaviors', tag)">#{{ tag }}</button>
           </div>
           <form class="custom-tag" @submit.prevent="addCustomTag(currentQuestion.key as 'emotions' | 'behaviors')">
             <input v-if="currentQuestion.key === 'emotions'" v-model="customEmotion" placeholder="加入自己的感受">
             <input v-else v-model="customBehavior" placeholder="加入自己的行為">
-            <button>＋ 加入</button>
+            <button type="submit">＋ 加入</button>
           </form>
         </div>
         <textarea v-else v-model="journal[currentQuestion.key] as string" :placeholder="currentQuestion.placeholder" rows="5" />
