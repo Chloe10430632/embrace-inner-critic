@@ -13,6 +13,14 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     {
         base.OnModelCreating(builder);
 
+        builder.Entity<ApplicationUser>(entity =>
+        {
+            entity.ToTable("AspNetUsers", table =>
+                table.HasCheckConstraint(
+                    "CK_AspNetUsers_DiaryEntryCount_NonNegative",
+                    "\"DiaryEntryCount\" >= 0"));
+        });
+
         builder.Entity<DiaryEntry>(entity =>
         {
             entity.Property(entry => entry.CriticName).HasMaxLength(64);

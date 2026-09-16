@@ -5,22 +5,40 @@ using EmbraceInnerCritic.Api.Data;
 using EmbraceInnerCritic.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace EmbraceInnerCritic.Api.Controllers;
 
 [ApiController]
 [Authorize]
+[EnableRateLimiting("diary")]
 [Route("api/diary-entries")]
 public sealed class DiaryEntriesController(ApplicationDbContext database) : ControllerBase
 {
+    private const int MaxRequestBodyBytes = 64 * 1024;
+    private const int MaxAnswersBytes = 32 * 1024;
+    private const int MaxEntriesPerUser = 500;
+    private const int DefaultPageSize = 50;
+    private const int MaxPageSize = 50;
+    private const int MaxPageNumber = 1_000;
+
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<DiaryResponse>>> List()
+    public async Task<ActionResult<IReadOnlyList<DiaryResponse>>> List(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = DefaultPageSize)
     {
+        if (page is < 1 or > MaxPageNumber || pageSize is < 1 or > MaxPageSize)
+        {
+            return BadRequest(new { error = $"page 需介於 1 至 {MaxPageNumber}，pageSize 需介於 1 至 {MaxPageSize}。" });
+        }
+
         var userId = CurrentUserId();
         var entries = await database.DiaryEntries
             .Where(entry => entry.UserId == userId)
             .OrderByDescending(entry => entry.UpdatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
         return Ok(entries.Select(ToResponse));
@@ -34,6 +52,7 @@ public sealed class DiaryEntriesController(ApplicationDbContext database) : Cont
     }
 
     [HttpPost]
+    [RequestSizeLimit(MaxRequestBodyBytes)]
     public async Task<ActionResult<DiaryResponse>> Create(UpsertDiaryRequest request)
     {
         if (!IsValid(request, out var error))
@@ -42,10 +61,16 @@ public sealed class DiaryEntriesController(ApplicationDbContext database) : Cont
         }
 
         var userId = CurrentUserId();
-        var userExists = await database.Users.AnyAsync(user => user.Id == userId);
-        if (!userExists)
+        await using var transaction = await database.Database.BeginTransactionAsync();
+        var quotaReserved = await database.Users
+            .Where(user => user.Id == userId && user.DiaryEntryCount < MaxEntriesPerUser)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(user => user.DiaryEntryCount, user => user.DiaryEntryCount + 1));
+        if (quotaReserved == 0)
         {
-            return Unauthorized();
+            return StatusCode(
+                StatusCodes.Status429TooManyRequests,
+                new { error = $"每個帳號最多可儲存 {MaxEntriesPerUser} 篇日記。" });
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -61,11 +86,13 @@ public sealed class DiaryEntriesController(ApplicationDbContext database) : Cont
         };
         database.DiaryEntries.Add(entry);
         await database.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return CreatedAtAction(nameof(Get), new { id = entry.Id }, ToResponse(entry));
     }
 
     [HttpPut("{id:guid}")]
+    [RequestSizeLimit(MaxRequestBodyBytes)]
     public async Task<ActionResult<DiaryResponse>> Update(Guid id, UpsertDiaryRequest request)
     {
         if (!IsValid(request, out var error))
@@ -97,8 +124,14 @@ public sealed class DiaryEntriesController(ApplicationDbContext database) : Cont
             return NotFound();
         }
 
+        await using var transaction = await database.Database.BeginTransactionAsync();
         database.DiaryEntries.Remove(entry);
         await database.SaveChangesAsync();
+        await database.Users
+            .Where(user => user.Id == entry.UserId && user.DiaryEntryCount > 0)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(user => user.DiaryEntryCount, user => user.DiaryEntryCount - 1));
+        await transaction.CommitAsync();
         return NoContent();
     }
 
@@ -121,6 +154,12 @@ public sealed class DiaryEntriesController(ApplicationDbContext database) : Cont
         if (request.Answers.ValueKind != JsonValueKind.Object)
         {
             error = "日記內容格式不正確。";
+            return false;
+        }
+
+        if (System.Text.Encoding.UTF8.GetByteCount(request.Answers.GetRawText()) > MaxAnswersBytes)
+        {
+            error = $"日記內容不可超過 {MaxAnswersBytes / 1024} KB。";
             return false;
         }
 

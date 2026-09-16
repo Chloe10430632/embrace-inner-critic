@@ -37,6 +37,9 @@ namespace EmbraceInnerCritic.Api.Migrations
                     b.Property<string>("CriticName")
                         .HasColumnType("text");
 
+                    b.Property<int>("DiaryEntryCount")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -86,7 +89,10 @@ namespace EmbraceInnerCritic.Api.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
 
-                    b.ToTable("AspNetUsers", (string)null);
+                    b.ToTable("AspNetUsers", t =>
+                        {
+                            t.HasCheckConstraint("CK_AspNetUsers_DiaryEntryCount_NonNegative", "\"DiaryEntryCount\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("EmbraceInnerCritic.Api.Models.DiaryEntry", b =>

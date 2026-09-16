@@ -28,6 +28,7 @@ const config = useRuntimeConfig()
 const authUser = ref<AuthUser | null>(null)
 const authChecked = ref(false)
 const authMessage = ref('')
+const csrfToken = ref('')
 
 const journal = reactive<Record<JournalKey, string | string[]>>({
   trigger: '', critic: '', emotions: [], behaviors: [], origin: '', reply: ''
@@ -309,9 +310,24 @@ function saveAndLeave() {
 }
 
 async function api<T>(path: string, options: Record<string, unknown> = {}) {
+  const method = String(options.method ?? 'GET').toUpperCase()
+  const requiresCsrf = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+  const headers = new Headers(options.headers as HeadersInit | undefined)
+
+  if (requiresCsrf) {
+    if (!csrfToken.value) {
+      const response = await $fetch<{ requestToken: string }>(config.public.apiBase + '/api/auth/csrf', {
+        credentials: 'include'
+      })
+      csrfToken.value = response.requestToken
+    }
+    headers.set('X-CSRF-TOKEN', csrfToken.value)
+  }
+
   return await $fetch<T>(config.public.apiBase + path, {
     credentials: 'include',
-    ...options
+    ...options,
+    headers
   })
 }
 
@@ -340,7 +356,15 @@ function startGoogleLogin() {
 
 async function loadEntries() {
   try {
-    entries.value = await api<JournalEntry[]>('/api/diary-entries')
+    const loadedEntries: JournalEntry[] = []
+    const pageSize = 50
+    const maxPages = 10
+    for (let page = 1; page <= maxPages; page++) {
+      const pageEntries = await api<JournalEntry[]>(`/api/diary-entries?page=${page}&pageSize=${pageSize}`)
+      loadedEntries.push(...pageEntries)
+      if (pageEntries.length < pageSize) break
+    }
+    entries.value = loadedEntries
   } catch {
     entries.value = []
     authMessage.value = '無法讀取日記，請確認後端服務是否已啟動。'
@@ -352,6 +376,7 @@ async function logout() {
     await api('/api/auth/logout', { method: 'POST' })
   } finally {
     authUser.value = null
+    csrfToken.value = ''
     entries.value = []
     stage.value = 0
   }
