@@ -96,6 +96,8 @@ builder.Services.AddControllers(options =>
 var app = builder.Build();
 
 app.UseHttpsRedirection();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseRateLimiter();
@@ -108,6 +110,7 @@ app.MapGet("/api/auth/csrf", (HttpContext context, IAntiforgery antiforgery) =>
     return Results.Ok(new { requestToken = tokens.RequestToken });
 });
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

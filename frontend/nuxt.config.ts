@@ -6,7 +6,8 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
     public: {
-      apiBase: 'https://localhost:7228'
+      apiBase: process.env.NUXT_PUBLIC_API_BASE
+        ?? (process.env.NODE_ENV === 'production' ? '' : 'https://localhost:7228')
     }
   },
   vite: {

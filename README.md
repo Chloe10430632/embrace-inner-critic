@@ -84,6 +84,10 @@ npm run typecheck
 npm run build
 ```
 
+## 測試環境部署
+
+測試環境使用單一 Render Web Service，同一個 HTTPS 網址提供 Nuxt 前端與 ASP.NET Core API，資料庫沿用 Supabase PostgreSQL。部署步驟、Secret 清單、Google OAuth callback 與驗證方式請見 [DEPLOYMENT.md](DEPLOYMENT.md)。
+
 ## 代辦清單
 
 本專案目前已有可操作的 Nuxt 前端原型；後端、帳號與資料庫尚未建立。

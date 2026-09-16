@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: embrace-inner-critic-staging
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+        value: "true"
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Authentication__Google__ClientId
+        sync: false
+      - key: Authentication__Google__ClientSecret
+        sync: false
+      - key: Frontend__BaseUrl
+        value: https://embrace-inner-critic-staging.onrender.com
+      - key: AllowedHosts
+        value: embrace-inner-critic-staging.onrender.com
