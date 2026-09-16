@@ -122,11 +122,11 @@ npm run build
 
 ### 後端與資料庫
 
-- [ ] 建立 ASP.NET Core 10 Web API。
-- [ ] 建立 ASP.NET Core Identity 註冊、登入及登出流程。
-- [ ] 建立 PostgreSQL schema 與 EF Core migrations。
+- [x] 建立 ASP.NET Core 10 Web API。
+- [x] 建立 ASP.NET Core Identity 與 Google 登入、登出流程。
+- [x] 建立 PostgreSQL schema 與 EF Core migrations。
 - [ ] 儲存內在批評者名稱、日記、標籤與聲音偏好。
-- [ ] 實作新增、讀取、編輯及刪除自己的日記。
+- [x] 實作新增、讀取、編輯及刪除自己的日記。
 - [ ] 驗證使用者無法讀寫其他人的資料。
 - [ ] 實作帳號與個人資料刪除流程。
 - [ ] 加入安全文字攔截及固定的主動求助入口。
@@ -163,4 +163,4 @@ npm run build
 
 背景音樂目前使用 CC0 授權的 `Mystical Piano`，在 1 分 35 秒處循環；來源與授權紀錄位於 `frontend/public/audio/CREDITS.md`。按鈕音效仍由 Web Audio API 即時產生。
 
-目前限制：日記只存在目前瀏覽器的 `localStorage`，不支援登入、跨裝置同步或帳號資料隔離；安全頁可手動開啟，但尚未實作安全文字攔截；所有日記步驟仍需完成完整 RWD 與無障礙檢查；後端、帳號及資料庫尚未建立。
+目前已可使用 Google 登入並將日記儲存到 Supabase PostgreSQL；連線字串與 OAuth 憑證只存在本機 User Secrets。舊版瀏覽器日記不會在未經同意下搬入帳號；安全頁可手動開啟，但尚未實作安全文字攔截；所有日記步驟仍需完成完整 RWD 與無障礙檢查。

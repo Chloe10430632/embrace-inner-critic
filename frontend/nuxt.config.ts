@@ -4,6 +4,11 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: false },
   css: ['~/assets/css/main.css'],
+  runtimeConfig: {
+    public: {
+      apiBase: 'https://localhost:7228'
+    }
+  },
   vite: {
     plugins: [tailwindcss()]
   },

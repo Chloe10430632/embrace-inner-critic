@@ -13,3 +13,10 @@ frontend/node_modules/.cache/
 .DS_Store
 Thumbs.db
 .vscode/
+.vs/
+
+# .NET local build output and user-specific settings
+backend/**/bin/
+backend/**/obj/
+backend/**/logs/
+backend/**/*.csproj.user

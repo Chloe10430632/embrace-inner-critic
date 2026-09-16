@@ -7,6 +7,7 @@ type JournalEntry = {
   answers: Record<JournalKey, string | string[]>
   isComplete: boolean
 }
+type AuthUser = { id: string; email: string | null }
 
 const stage = ref(0)
 const lessonOne = ref(0)
@@ -23,6 +24,10 @@ const customBehavior = ref('')
 const completed = ref(false)
 const entries = ref<JournalEntry[]>([])
 const editingEntryId = ref<string | null>(null)
+const config = useRuntimeConfig()
+const authUser = ref<AuthUser | null>(null)
+const authChecked = ref(false)
+const authMessage = ref('')
 
 const journal = reactive<Record<JournalKey, string | string[]>>({
   trigger: '', critic: '', emotions: [], behaviors: [], origin: '', reply: ''
@@ -141,13 +146,14 @@ function startJourney() {
   stage.value = 1
 }
 
-function startJournal() {
+async function startJournal() {
   if (import.meta.client) localStorage.setItem('embrace-inner-critic:onboarding-complete', 'true')
   hasCompletedOnboarding.value = true
-  beginNewJournal()
+  if (await requireJournalAccess()) beginNewJournal()
 }
 
-function beginNewJournal() {
+async function beginNewJournal() {
+  if (!await requireJournalAccess()) return
   for (const key of Object.keys(journal) as JournalKey[]) journal[key] = key === 'emotions' || key === 'behaviors' ? [] : ''
   customEmotion.value = ''
   customBehavior.value = ''
@@ -164,13 +170,20 @@ function replayIntroduction() {
   stage.value = 1
 }
 
-function navigateTo(destination: 'home' | 'journals' | 'animation') {
-  if (stage.value >= 7 && stage.value <= 13 && hasJournalContent()) saveJournal(completed.value)
+async function navigateTo(destination: 'home' | 'journals' | 'animation') {
+  if (stage.value >= 7 && stage.value <= 13 && hasJournalContent()) void saveJournal(completed.value)
   navigationOpen.value = false
 
-  if (destination === 'home') stage.value = 0
-  else if (destination === 'journals') stage.value = 6
-  else replayIntroduction()
+  if (destination === 'home') {
+    stage.value = 0
+  } else if (destination === 'journals') {
+    if (await requireJournalAccess()) {
+      await loadEntries()
+      stage.value = 6
+    }
+  } else {
+    replayIntroduction()
+  }
 }
 
 function hasJournalContent() {
@@ -232,38 +245,35 @@ function useHardReply() {
 }
 
 function finishJournal() {
-  saveJournal(true)
+  void saveJournal(true)
 }
 
 function cloneAnswers(source: Record<JournalKey, string | string[]>) {
   return Object.fromEntries(Object.entries(source).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value])) as Record<JournalKey, string | string[]>
 }
 
-function persistEntries() {
-  if (import.meta.client) localStorage.setItem('embrace-inner-critic:journal-entries', JSON.stringify(entries.value))
-}
-
-function saveJournal(isComplete: boolean) {
-  const existingIndex = entries.value.findIndex(entry => entry.id === editingEntryId.value)
-  const entry: JournalEntry = {
-    id: editingEntryId.value ?? crypto.randomUUID(),
-    createdAt: existingIndex >= 0 ? entries.value[existingIndex]!.createdAt : new Date().toISOString(),
-    criticName: confirmedName.value,
-    answers: cloneAnswers(journal),
-    isComplete
+async function saveJournal(isComplete: boolean) {
+  try {
+    const entry = await api<JournalEntry>(editingEntryId.value ? '/api/diary-entries/' + editingEntryId.value : '/api/diary-entries', {
+      method: editingEntryId.value ? 'PUT' : 'POST',
+      body: {
+        criticName: confirmedName.value,
+        answers: cloneAnswers(journal),
+        isComplete
+      }
+    })
+    const existingIndex = entries.value.findIndex(item => item.id === entry.id)
+    if (existingIndex >= 0) entries.value.splice(existingIndex, 1, entry)
+    else entries.value.unshift(entry)
+    editingEntryId.value = entry.id
+    playEffect(isComplete ? 'complete' : 'paper')
+    if (isComplete) {
+      completed.value = true
+      stage.value = 14
+    } else stage.value = 6
+  } catch {
+    authMessage.value = '日記目前無法儲存，請確認登入與後端服務後再試一次。'
   }
-
-  if (existingIndex >= 0) entries.value.splice(existingIndex, 1, entry)
-  else entries.value.unshift(entry)
-
-  editingEntryId.value = entry.id
-  persistEntries()
-  playEffect(isComplete ? 'complete' : 'paper')
-
-  if (isComplete) {
-    completed.value = true
-    stage.value = 14
-  } else stage.value = 6
 }
 
 function openEntry(entry: JournalEntry) {
@@ -275,11 +285,15 @@ function openEntry(entry: JournalEntry) {
   stage.value = 13
 }
 
-function deleteEntry(id: string) {
+async function deleteEntry(id: string) {
   if (!import.meta.client || !window.confirm('要刪除這篇日記嗎？這個動作無法復原。')) return
-  entries.value = entries.value.filter(entry => entry.id !== id)
-  persistEntries()
-  playEffect('paper')
+  try {
+    await api('/api/diary-entries/' + id, { method: 'DELETE' })
+    entries.value = entries.value.filter(entry => entry.id !== id)
+    playEffect('paper')
+  } catch {
+    authMessage.value = '日記目前無法刪除，請稍後再試。'
+  }
 }
 
 function formatEntryDate(isoDate: string) {
@@ -291,7 +305,56 @@ function entryPreview(entry: JournalEntry) {
 }
 
 function saveAndLeave() {
-  saveJournal(false)
+  void saveJournal(false)
+}
+
+async function api<T>(path: string, options: Record<string, unknown> = {}) {
+  return await $fetch<T>(config.public.apiBase + path, {
+    credentials: 'include',
+    ...options
+  })
+}
+
+async function checkSession() {
+  try {
+    authUser.value = await api<AuthUser>('/api/auth/me')
+  } catch {
+    authUser.value = null
+  } finally {
+    authChecked.value = true
+  }
+}
+
+async function requireJournalAccess() {
+  if (!authChecked.value) await checkSession()
+  if (authUser.value) return true
+  authMessage.value = ''
+  stage.value = 16
+  return false
+}
+
+function startGoogleLogin() {
+  if (!import.meta.client) return
+  window.location.assign(config.public.apiBase + '/api/auth/google')
+}
+
+async function loadEntries() {
+  try {
+    entries.value = await api<JournalEntry[]>('/api/diary-entries')
+  } catch {
+    entries.value = []
+    authMessage.value = '無法讀取日記，請確認後端服務是否已啟動。'
+  }
+}
+
+async function logout() {
+  try {
+    await api('/api/auth/logout', { method: 'POST' })
+  } finally {
+    authUser.value = null
+    entries.value = []
+    stage.value = 0
+  }
 }
 
 function displayAnswer(key: JournalKey) {
@@ -299,18 +362,18 @@ function displayAnswer(key: JournalKey) {
   return Array.isArray(value) ? value.map(item => `#${item}`).join('　') || '今天沒有回答' : value || '今天沒有回答'
 }
 
-onMounted(() => {
+onMounted(async () => {
   hasCompletedOnboarding.value = localStorage.getItem('embrace-inner-critic:onboarding-complete') === 'true'
   const storedCriticName = localStorage.getItem('embrace-inner-critic:critic-name')
   if (storedCriticName) {
     criticName.value = storedCriticName
     confirmedName.value = storedCriticName
   }
-  try {
-    const storedEntries = JSON.parse(localStorage.getItem('embrace-inner-critic:journal-entries') ?? '[]')
-    if (Array.isArray(storedEntries)) entries.value = storedEntries
-  } catch {
-    entries.value = []
+  await checkSession()
+  if (authUser.value) await loadEntries()
+  if (authUser.value && new URLSearchParams(window.location.search).get('next') === 'journals') {
+    stage.value = 6
+    window.history.replaceState({}, '', window.location.pathname)
   }
 })
 
@@ -340,6 +403,7 @@ onBeforeUnmount(() => disposeAmbient())
             <button type="button" @click="navigateTo('home')">首頁</button>
             <button type="button" @click="navigateTo('journals')">我的日記</button>
             <button type="button" @click="navigateTo('animation')">動畫導覽</button>
+            <button v-if="authUser" type="button" @click="logout">登出</button>
           </nav>
         </div>
       </div>
@@ -435,6 +499,7 @@ onBeforeUnmount(() => disposeAmbient())
         <p class="eyebrow">我的日記</p>
         <h2>從今天想看見的地方開始。</h2>
         <p class="lead narrow">每一篇都可以慢慢寫、之後再回來修改。</p>
+        <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
         <button class="primary" @click="beginNewJournal">寫一篇新日記 <span>→</span></button>
         <div v-if="entries.length" class="entry-list">
           <article v-for="entry in entries" :key="entry.id" class="entry-card" @click="openEntry(entry)">
@@ -489,6 +554,7 @@ onBeforeUnmount(() => disposeAmbient())
         <p class="eyebrow">回顧</p>
         <h2>這是你今天看見的一小段地圖。</h2>
         <p class="lead">你的原始文字會保持原樣。</p>
+        <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
         <div class="review-grid">
           <article v-for="question in questions" :key="question.key">
             <span>{{ question.eyebrow }}</span>
@@ -508,6 +574,16 @@ onBeforeUnmount(() => disposeAmbient())
         <p class="lead narrow">今天，你已經看見了一個原本很容易被忽略的聲音。</p>
         <button class="primary" @click="stage = 6">回到我的日記 <span>→</span></button>
         <button class="text-button" @click="stage = 6">關閉今天的練習</button>
+      </section>
+
+      <section v-else-if="stage === 16" key="login" class="scene compact-scene">
+        <div class="blank-node"><span>↗</span></div>
+        <p class="eyebrow">寫日記前</p>
+        <h2>先登入，才可以把<br>這一頁留給自己。</h2>
+        <p class="lead narrow">你的日記會只屬於登入的帳號；完成登入後，就可以建立、修改、查看與刪除自己的日記。</p>
+        <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
+        <button class="primary" @click="startGoogleLogin">使用 Google 登入 <span>→</span></button>
+        <button class="text-button" @click="stage = hasCompletedOnboarding ? 0 : 5">先回去看看</button>
       </section>
 
       <section v-else-if="stage === 15" key="safety" class="scene safety-scene">
