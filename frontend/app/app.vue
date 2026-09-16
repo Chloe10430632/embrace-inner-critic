@@ -1,17 +1,28 @@
 <script setup lang="ts">
 type JournalKey = 'trigger' | 'critic' | 'emotions' | 'behaviors' | 'origin' | 'reply'
+type JournalEntry = {
+  id: string
+  createdAt: string
+  criticName: string
+  answers: Record<JournalKey, string | string[]>
+  isComplete: boolean
+}
 
 const stage = ref(0)
 const lessonOne = ref(0)
 const lessonTwo = ref(0)
 const criticName = ref('')
 const confirmedName = ref('山姆')
+const hasCompletedOnboarding = ref(false)
 const soundOn = ref(true)
 const effectsOn = ref(true)
 const soundPanel = ref(false)
+const navigationOpen = ref(false)
 const customEmotion = ref('')
 const customBehavior = ref('')
 const completed = ref(false)
+const entries = ref<JournalEntry[]>([])
+const editingEntryId = ref<string | null>(null)
 
 const journal = reactive<Record<JournalKey, string | string[]>>({
   trigger: '', critic: '', emotions: [], behaviors: [], origin: '', reply: ''
@@ -130,6 +141,42 @@ function startJourney() {
   stage.value = 1
 }
 
+function startJournal() {
+  if (import.meta.client) localStorage.setItem('embrace-inner-critic:onboarding-complete', 'true')
+  hasCompletedOnboarding.value = true
+  beginNewJournal()
+}
+
+function beginNewJournal() {
+  for (const key of Object.keys(journal) as JournalKey[]) journal[key] = key === 'emotions' || key === 'behaviors' ? [] : ''
+  customEmotion.value = ''
+  customBehavior.value = ''
+  editingEntryId.value = null
+  completed.value = false
+  playEffect()
+  stage.value = 7
+}
+
+function replayIntroduction() {
+  lessonOne.value = 0
+  lessonTwo.value = 0
+  playEffect()
+  stage.value = 1
+}
+
+function navigateTo(destination: 'home' | 'journals' | 'animation') {
+  if (stage.value >= 7 && stage.value <= 13 && hasJournalContent()) saveJournal(completed.value)
+  navigationOpen.value = false
+
+  if (destination === 'home') stage.value = 0
+  else if (destination === 'journals') stage.value = 6
+  else replayIntroduction()
+}
+
+function hasJournalContent() {
+  return Object.values(journal).some(value => Array.isArray(value) ? value.length > 0 : value.trim().length > 0)
+}
+
 function confirmSound(enabled: boolean) {
   soundOn.value = enabled
   if (enabled) startAmbient()
@@ -145,6 +192,7 @@ function advanceLessonOne() {
 
 function confirmCriticName() {
   confirmedName.value = criticName.value.trim() || '山姆'
+  if (import.meta.client) localStorage.setItem('embrace-inner-critic:critic-name', confirmedName.value)
   playEffect('paper')
   stage.value = 4
 }
@@ -184,15 +232,87 @@ function useHardReply() {
 }
 
 function finishJournal() {
-  completed.value = true
-  stage.value = 14
-  playEffect('complete')
+  saveJournal(true)
+}
+
+function cloneAnswers(source: Record<JournalKey, string | string[]>) {
+  return Object.fromEntries(Object.entries(source).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value])) as Record<JournalKey, string | string[]>
+}
+
+function persistEntries() {
+  if (import.meta.client) localStorage.setItem('embrace-inner-critic:journal-entries', JSON.stringify(entries.value))
+}
+
+function saveJournal(isComplete: boolean) {
+  const existingIndex = entries.value.findIndex(entry => entry.id === editingEntryId.value)
+  const entry: JournalEntry = {
+    id: editingEntryId.value ?? crypto.randomUUID(),
+    createdAt: existingIndex >= 0 ? entries.value[existingIndex]!.createdAt : new Date().toISOString(),
+    criticName: confirmedName.value,
+    answers: cloneAnswers(journal),
+    isComplete
+  }
+
+  if (existingIndex >= 0) entries.value.splice(existingIndex, 1, entry)
+  else entries.value.unshift(entry)
+
+  editingEntryId.value = entry.id
+  persistEntries()
+  playEffect(isComplete ? 'complete' : 'paper')
+
+  if (isComplete) {
+    completed.value = true
+    stage.value = 14
+  } else stage.value = 6
+}
+
+function openEntry(entry: JournalEntry) {
+  for (const key of Object.keys(journal) as JournalKey[]) journal[key] = Array.isArray(entry.answers[key]) ? [...entry.answers[key] as string[]] : entry.answers[key] as string
+  confirmedName.value = entry.criticName
+  criticName.value = entry.criticName
+  editingEntryId.value = entry.id
+  completed.value = entry.isComplete
+  stage.value = 13
+}
+
+function deleteEntry(id: string) {
+  if (!import.meta.client || !window.confirm('要刪除這篇日記嗎？這個動作無法復原。')) return
+  entries.value = entries.value.filter(entry => entry.id !== id)
+  persistEntries()
+  playEffect('paper')
+}
+
+function formatEntryDate(isoDate: string) {
+  return new Intl.DateTimeFormat('zh-TW', { dateStyle: 'medium' }).format(new Date(isoDate))
+}
+
+function entryPreview(entry: JournalEntry) {
+  return String(entry.answers.critic || entry.answers.trigger || '今天先沒有留下文字。').slice(0, 72)
+}
+
+function saveAndLeave() {
+  saveJournal(false)
 }
 
 function displayAnswer(key: JournalKey) {
   const value = journal[key]
   return Array.isArray(value) ? value.map(item => `#${item}`).join('　') || '今天沒有回答' : value || '今天沒有回答'
 }
+
+onMounted(() => {
+  hasCompletedOnboarding.value = localStorage.getItem('embrace-inner-critic:onboarding-complete') === 'true'
+  const storedCriticName = localStorage.getItem('embrace-inner-critic:critic-name')
+  if (storedCriticName) {
+    criticName.value = storedCriticName
+    confirmedName.value = storedCriticName
+  }
+  try {
+    const storedEntries = JSON.parse(localStorage.getItem('embrace-inner-critic:journal-entries') ?? '[]')
+    if (Array.isArray(storedEntries)) entries.value = storedEntries
+  } catch {
+    entries.value = []
+  }
+})
 
 onBeforeUnmount(() => disposeAmbient())
 </script>
@@ -203,14 +323,24 @@ onBeforeUnmount(() => disposeAmbient())
     <div class="mist mist-two" />
 
     <header class="topbar">
-      <button class="brand" @click="stage = 0">擁抱內在批評者</button>
-      <div class="sound-wrap">
-        <button class="icon-button" aria-label="聲音設定" @click="soundPanel = !soundPanel">
-          {{ soundOn ? '♪' : '♩' }}
-        </button>
-        <div v-if="soundPanel" class="sound-panel">
-          <label><input v-model="soundOn" type="checkbox"> 背景聲景</label>
-          <label><input v-model="effectsOn" type="checkbox"> 按鈕小音效</label>
+      <button class="brand" @click="navigateTo('home')">擁抱內在批評者</button>
+      <div class="topbar-actions">
+        <div class="sound-wrap">
+          <button class="icon-button" aria-label="聲音設定" @click="soundPanel = !soundPanel">
+            {{ soundOn ? '♪' : '♩' }}
+          </button>
+          <div v-if="soundPanel" class="sound-panel">
+            <label><input v-model="soundOn" type="checkbox"> 背景聲景</label>
+            <label><input v-model="effectsOn" type="checkbox"> 按鈕小音效</label>
+          </div>
+        </div>
+        <div class="navigation-wrap">
+          <button class="icon-button menu-button" :aria-expanded="navigationOpen" aria-controls="main-navigation" aria-label="開啟主要導覽" @click="navigationOpen = !navigationOpen"><span /><span /><span /></button>
+          <nav v-if="navigationOpen" id="main-navigation" class="main-nav" aria-label="主要導覽">
+            <button type="button" @click="navigateTo('home')">首頁</button>
+            <button type="button" @click="navigateTo('journals')">我的日記</button>
+            <button type="button" @click="navigateTo('animation')">動畫導覽</button>
+          </nav>
         </div>
       </div>
     </header>
@@ -226,7 +356,11 @@ onBeforeUnmount(() => disposeAmbient())
         <h1>歡迎來到<br><em>你的內在地圖。</em></h1>
         <p class="lead">這裡沒有標準答案，也不需要急著一次把所有事情想清楚。</p>
         <p class="lead">我們只從一個你最近聽見的聲音開始。</p>
-        <button class="primary" @click="startJourney">開始探索 <span>→</span></button>
+        <button class="primary" @click="hasCompletedOnboarding ? startJournal() : startJourney()">
+          {{ hasCompletedOnboarding ? '直接開始寫日記' : '開始探索' }} <span>→</span>
+        </button>
+        <button v-if="hasCompletedOnboarding" class="text-button replay-link" @click="replayIntroduction">重新看前面的動畫</button>
+        <button v-if="hasCompletedOnboarding && entries.length" class="text-button replay-link" @click="stage = 6">查看我的日記</button>
       </section>
 
       <section v-else-if="stage === 1" key="sound" class="scene compact-scene">
@@ -292,16 +426,37 @@ onBeforeUnmount(() => disposeAmbient())
         <p class="eyebrow">第一個節點</p>
         <h2>開始前，先看看現在的自己。</h2>
         <p class="lead narrow">你可以隨時跳過、返回或停下來，已經寫下的部分仍然有意義。</p>
-        <button class="primary" @click="stage = 7; playEffect()">開始吧！ <span>→</span></button>
+        <button class="primary" @click="startJournal">開始吧！ <span>→</span></button>
         <button class="text-button" @click="stage = 0">今天先不寫</button>
         <button class="help-link" @click="stage = 15">我現在需要協助</button>
+      </section>
+
+      <section v-else-if="stage === 6" key="journal-home" class="scene journal-home-scene">
+        <p class="eyebrow">我的日記</p>
+        <h2>從今天想看見的地方開始。</h2>
+        <p class="lead narrow">每一篇都可以慢慢寫、之後再回來修改。</p>
+        <button class="primary" @click="beginNewJournal">寫一篇新日記 <span>→</span></button>
+        <div v-if="entries.length" class="entry-list">
+          <article v-for="entry in entries" :key="entry.id" class="entry-card" @click="openEntry(entry)">
+            <div>
+              <span>{{ formatEntryDate(entry.createdAt) }} · {{ entry.isComplete ? '已完成' : '草稿' }}</span>
+              <h3>{{ entry.criticName }} 說：「{{ entryPreview(entry) }}」</h3>
+            </div>
+            <div class="entry-actions">
+              <button type="button" class="secondary" @click.stop="openEntry(entry)">閱讀／修改</button>
+              <button type="button" class="delete-button" @click.stop="deleteEntry(entry.id)">刪除</button>
+            </div>
+          </article>
+        </div>
+        <p v-else class="empty-journals">第一篇不需要寫得完整，從一個當下的聲音開始就好。</p>
+        <button class="text-button" @click="stage = 0">回到歡迎頁</button>
       </section>
 
       <section v-else-if="stage >= 7 && stage <= 12" :key="`question-${stage}`" class="scene journal-scene">
         <div class="journal-topline">
           <button class="back-button" @click="stage--">← 返回</button>
           <span>{{ currentQuestion.eyebrow }}</span>
-          <button class="save-link" @click="stage = 0">儲存並離開</button>
+          <button class="save-link" @click="saveAndLeave">儲存並離開</button>
         </div>
         <div v-if="stage > 8 && criticQuote" class="critic-note">
           <span>{{ confirmedName }} 剛才說</span>
@@ -342,7 +497,7 @@ onBeforeUnmount(() => disposeAmbient())
         </div>
         <div class="review-actions">
           <button class="secondary" @click="stage = 7">返回修改</button>
-          <button class="primary" @click="finishJournal">儲存這篇日記 <span>→</span></button>
+          <button class="primary" @click="finishJournal">{{ editingEntryId ? '儲存修改' : '儲存這篇日記' }} <span>→</span></button>
         </div>
       </section>
 
@@ -351,8 +506,8 @@ onBeforeUnmount(() => disposeAmbient())
         <p class="eyebrow">第一個節點已被看見</p>
         <h2>你不需要一次<br>走完整張地圖。</h2>
         <p class="lead narrow">今天，你已經看見了一個原本很容易被忽略的聲音。</p>
-        <button class="primary" @click="stage = 0">回到我的地圖 <span>→</span></button>
-        <button class="text-button" @click="stage = 0">關閉今天的練習</button>
+        <button class="primary" @click="stage = 6">回到我的日記 <span>→</span></button>
+        <button class="text-button" @click="stage = 6">關閉今天的練習</button>
       </section>
 
       <section v-else-if="stage === 15" key="safety" class="scene safety-scene">
