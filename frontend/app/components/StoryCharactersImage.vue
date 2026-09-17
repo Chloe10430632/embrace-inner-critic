@@ -34,7 +34,7 @@ const description = computed(() => {
     </template>
     <span v-if="scene === 'separate'" class="breath-ring ring-one" />
     <span v-if="scene === 'separate'" class="breath-ring ring-two" />
-    <span v-if="scene === 'welcome'" class="sticker-label">從一個聲音開始</span>
+    <span v-if="scene === 'welcome'" class="sticker-label">從辨認它的聲音開始</span>
     <span v-if="scene === 'approach'" class="peek-speech">……你要休息了嗎？</span>
   </figure>
 </template>
