@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">擁抱內在批評者技術架構</title>
+  <desc id="desc">使用者瀏覽器透過 Nuxt 前端連到 ASP.NET Core API，API 使用 Entity Framework Core 存取 Supabase PostgreSQL，並整合 Google OAuth。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#111111"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.1"/>
+    </filter>
+    <style>
+      .title { font: 700 30px 'Noto Sans TC', sans-serif; fill: #111111; }
+      .label { font: 700 22px 'Noto Sans TC', sans-serif; fill: #111111; }
+      .detail { font: 400 17px 'Noto Sans TC', sans-serif; fill: #3c4540; }
+      .label-inverse { font: 700 22px 'Noto Sans TC', sans-serif; fill: #ffffff; }
+      .detail-inverse { font: 400 17px 'Noto Sans TC', sans-serif; fill: #dce4df; }
+      .note { font: 500 16px 'Noto Sans TC', sans-serif; fill: #111111; }
+      .box { stroke: #111111; stroke-width: 2.5; rx: 24; filter: url(#shadow); }
+      .flow { stroke: #111111; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="620" fill="#f7faf7"/>
+  <circle cx="1080" cy="90" r="96" fill="#37f20c" opacity="0.16"/>
+  <circle cx="120" cy="540" r="130" fill="#37f20c" opacity="0.1"/>
+  <text x="70" y="74" class="title">Embrace Your Inner Critic · System Flow</text>
+
+  <rect x="70" y="165" width="225" height="180" class="box" fill="#ffffff"/>
+  <text x="182" y="215" text-anchor="middle" class="label">Browser</text>
+  <text x="182" y="255" text-anchor="middle" class="detail">Guided reflection</text>
+  <text x="182" y="284" text-anchor="middle" class="detail">Animation · Audio</text>
+  <text x="182" y="313" text-anchor="middle" class="detail">Accessible controls</text>
+
+  <rect x="365" y="165" width="225" height="180" class="box" fill="#e9ffe4"/>
+  <text x="477" y="215" text-anchor="middle" class="label">Nuxt 4</text>
+  <text x="477" y="255" text-anchor="middle" class="detail">Vue 3 · TypeScript</text>
+  <text x="477" y="284" text-anchor="middle" class="detail">Tailwind CSS 4</text>
+  <text x="477" y="313" text-anchor="middle" class="detail">Same-origin requests</text>
+
+  <rect x="660" y="165" width="225" height="180" class="box" fill="#111111"/>
+  <text x="772" y="215" text-anchor="middle" class="label-inverse">ASP.NET Core 10</text>
+  <text x="772" y="255" text-anchor="middle" class="detail-inverse">Identity · Web API</text>
+  <text x="772" y="284" text-anchor="middle" class="detail-inverse">CSRF · Authorization</text>
+  <text x="772" y="313" text-anchor="middle" class="detail-inverse">Rate limit · Quota</text>
+
+  <rect x="955" y="165" width="175" height="180" class="box" fill="#37f20c"/>
+  <text x="1042" y="215" text-anchor="middle" class="label">PostgreSQL</text>
+  <text x="1042" y="255" text-anchor="middle" class="detail">Supabase hosted</text>
+  <text x="1042" y="284" text-anchor="middle" class="detail">EF Core 10</text>
+  <text x="1042" y="313" text-anchor="middle" class="detail">User-scoped data</text>
+
+  <path d="M295 255 H350" class="flow"/>
+  <path d="M590 255 H645" class="flow"/>
+  <path d="M885 255 H940" class="flow"/>
+
+  <rect x="610" y="420" width="325" height="104" rx="22" fill="#ffffff" stroke="#111111" stroke-width="2.5"/>
+  <text x="772" y="462" text-anchor="middle" class="label">Google OAuth</text>
+  <text x="772" y="493" text-anchor="middle" class="detail">External identity provider</text>
+  <path d="M772 420 V365" class="flow"/>
+
+  <text x="70" y="580" class="note">Private journal content is handled by the API; the browser does not access database tables directly.</text>
+</svg>

@@ -7,6 +7,7 @@ const props = withDefaults(defineProps<{
   compact: false
 })
 
+/** Returns the image URL for the current scene */
 const image = computed(() => {
   if (props.scene === 'name') return '/illustrations/critic-wave.png'
   if (props.scene === 'approach') return '/illustrations/critic-peek-wall.png'
@@ -15,6 +16,7 @@ const image = computed(() => {
   return '/illustrations/critic-scene-rest.png'
 })
 
+/** Returns the description for the current scene */
 const description = computed(() => {
   if (props.scene === 'talk') return '使用者緊張地坐著，內在批評者在一旁急切說話。'
   if (props.scene === 'separate') return '使用者鬆了一口氣，與內在批評者之間留出一段空間。'
@@ -34,7 +36,7 @@ const description = computed(() => {
     </template>
     <span v-if="scene === 'separate'" class="breath-ring ring-one" />
     <span v-if="scene === 'separate'" class="breath-ring ring-two" />
-    <span v-if="scene === 'welcome'" class="sticker-label">從辨認它的聲音開始</span>
+    <!-- <span v-if="scene === 'welcome'" class="sticker-label">從辨認它的聲音開始</span> -->
     <span v-if="scene === 'approach'" class="peek-speech">……你要休息了嗎？</span>
   </figure>
 </template>

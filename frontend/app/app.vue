@@ -435,7 +435,13 @@ onBeforeUnmount(() => disposeAmbient())
     <div class="mist mist-two" />
 
     <header class="topbar">
-      <button class="brand" @click="navigateTo('home')">擁抱內在批評者</button>
+      <button class="brand" aria-label="回到擁抱內在批評者首頁" @click="navigateTo('home')">
+        <img class="brand-mark" src="/favicon.svg" alt="" width="40" height="40">
+        <span class="brand-wordmark">
+          <span class="tracking-widest">擁抱內在批評者</span>
+          <small>EMBRACE YOUR INNER CRITIC</small>
+        </span>
+      </button>
       <div class="topbar-actions">
         <div class="sound-wrap">
           <button class="icon-button" aria-label="聲音設定" @click="soundPanel = !soundPanel">
@@ -467,7 +473,7 @@ onBeforeUnmount(() => disposeAmbient())
         <div class="welcome-hero">
           <StoryCharactersImage scene="welcome" />
           <p class="eyebrow">EMBRACE YOUR INNER CRITIC</p>
-          <h1>內在批評者<br><em>的覺察地圖。</em></h1>
+          <h1>看見你的<br><em>內在批評者</em></h1>
           <p class="lead">你知道嗎？你是你想法背後的意識，你的想法不是你的身份與價值。</p>
           <p class="lead">透過覺察地圖練習，你可以慢慢分辨它的聲音。</p>
           <button class="primary" @click="hasCompletedOnboarding ? startJournal() : startJourney()">
