@@ -105,15 +105,15 @@ const description = computed(() => {
 .compact { height: 230px; }
 
 @keyframes person-arrive { from { opacity:0; transform:translateY(12px) scale(.98); } to { opacity:1; transform:none; } }
-@keyframes critic-arrive { from { opacity:0; transform:translateX(45px); } to { opacity:1; transform:none; } }
-@keyframes soft-breathe { 50% { transform:translateY(3px); } }
+@keyframes critic-arrive { from { opacity:0; transform:translateX(245px); } to { opacity:1; transform:none; } }
+@keyframes soft-breathe { 50% { transform:translateY(10px); } }
 @keyframes pressure-in { from { opacity:0; transform:scale(.98); } to { opacity:1; transform:none; } }
 @keyframes tense-breathe { 50% { transform:scale(.992) translateY(2px); } }
-@keyframes critic-peek { from { opacity:0; transform:translateX(75px) rotate(7deg); } to { opacity:1; transform:translateX(-45px); } }
+@keyframes critic-peek { from { opacity:0; transform:translateX(75px) rotate(5deg); } to { opacity:1; transform:translateX(-0px); } }
 @keyframes wall-peek { from { opacity:0; transform:translateX(110px); } to { opacity:1; transform:none; } }
 @keyframes quiet-peek { 50% { transform:translateX(-7px) rotate(-.5deg); } }
 @keyframes peek-whisper { from { opacity:0; transform:translate(12px,8px) scale(.8); } to { opacity:1; transform:none; } }
-@keyframes critic-hover { 50% { transform:translateY(-6px) rotate(1.5deg); } }
+@keyframes critic-hover { 50% { transform:translateY(-3px) rotate(0.5deg) translateX(-20px); } }
 @keyframes cord-sway { 50% { transform:rotate(-2deg) translateY(-4px); } }
 @keyframes critic-talk { to { transform:translateX(-7px) rotate(-1.5deg); } }
 @keyframes person-release { from { opacity:.55; transform:translateX(26px) scale(.98); } to { opacity:1; transform:none; } }
@@ -124,7 +124,7 @@ const description = computed(() => {
 @keyframes pop { from { opacity:0; transform:scale(.45) rotate(7deg); } to { opacity:1; transform:scale(1) rotate(-3deg); } }
 
 @media(max-width:640px) {
-  .story-image { width:100%; height:285px; }
+  .story-image { width:120%; height:350px; }
   .sticker-label { left:1%; top:3%; font-size:.7rem; }
   .motion-word { right:0; top:5%; font-size:.7rem; }
   .peek-speech { right:2%; top:8%; padding:7px 10px; border-width:3px; font-size:.7rem; }

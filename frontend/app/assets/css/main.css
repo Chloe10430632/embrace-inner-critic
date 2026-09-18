@@ -28,7 +28,7 @@ button { color: inherit; }
 .mist-one { width: 34rem; height: 34rem; background: #dcebdc; left: -15rem; top: -14rem; }
 .mist-two { width: 28rem; height: 28rem; background: #e6f0dd; right: -12rem; bottom: -12rem; }
 .topbar { @apply sticky top-0 z-50 flex h-[74px] items-center justify-between; padding: 0 clamp(20px, 5vw, 72px); background:rgba(255,255,255,.90); border-bottom:1px solid rgba(0,0,0,.12); backdrop-filter:blur(15px); }
-.brand { display:flex; align-items:center; gap:10px; border:0; background:none; cursor:pointer; text-align:left; }
+.brand { display:flex; align-items:center; gap:10px; border:0; background:none; color:inherit; cursor:pointer; text-align:left; text-decoration:none; }
 .brand-mark { width:40px; height:40px; flex:0 0 auto; }
 .brand-wordmark { display:grid; gap:2px; font-weight:900; line-height:1.05; letter-spacing:.04em; }
 .brand-wordmark small { font-size:.55rem; font-weight:800; letter-spacing:.12em; }
@@ -37,8 +37,8 @@ button { color: inherit; }
 .menu-button { display:grid; place-content:center; gap:4px; }
 .menu-button span { display:block; width:17px; height:2px; background:#000; }
 .main-nav { position:absolute; top:calc(100% + 10px); right:0; z-index:30; display:grid; gap:8px; width:154px; padding:10px; border:3px solid #000; border-radius:4px 4px 18px 18px; background:#fff; box-shadow:7px 7px 0 #39ff14; }
-.main-nav button { border:0; padding:9px 10px; background:#fff; cursor:pointer; text-align:left; font-size:.88rem; font-weight:700; }
-.main-nav button:hover { transform:translateY(-1px); box-shadow:1px 1px 0 #39ff14; }
+.main-nav :is(a,button) { border:0; padding:9px 10px; background:#fff; color:inherit; cursor:pointer; text-align:left; text-decoration:none; font-size:.88rem; font-weight:700; }
+.main-nav :is(a,button):hover, .main-nav a[aria-current='page'] { transform:translateY(-1px); box-shadow:1px 1px 0 #39ff14; }
 .icon-button { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255,255,255,.75); cursor: pointer; font-size: 1.25rem; }
 .sound-wrap { position: relative; }
 .sound-panel { @apply absolute right-0 top-[50px] z-20 grid w-[190px] gap-3 bg-white p-3.5 text-sm; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 15px 45px rgba(28,55,38,.12); }
@@ -54,7 +54,7 @@ h2 { font-size: clamp(2rem, 5vw, 3.65rem); font-weight: 600; }
 .lead { max-width: 650px; margin: 20px auto 0; color: var(--muted); line-height: 1.9; font-size: clamp(1rem, 2vw, 1.12rem); }
 .lead + .lead { margin-top: 2px; }
 .narrow { max-width: 610px; }
-.primary, .secondary { min-height: 54px; border-radius: 999px; padding: 0 28px; cursor: pointer; font-weight: 600; transition: transform .2s, box-shadow .2s, background .2s; }
+.primary, .secondary { display:inline-flex; min-height:54px; align-items:center; justify-content:center; border-radius:999px; padding:0 28px; cursor:pointer; font-weight:600; text-decoration:none; transition:transform .2s,box-shadow .2s,background .2s; }
 .primary { margin-top: 32px; border: 0; color: white; background: var(--green-dark); box-shadow: 0 12px 28px rgba(40,81,58,.2); }
 .primary span { margin-left: 16px; }
 .primary:hover, .secondary:hover { transform: translateY(-2px); }
@@ -195,8 +195,8 @@ textarea { resize: vertical; min-height: 165px; padding: 20px; margin-top: 28px;
 /* Pop-up storybook direction: white, black, and electric green only. */
 :root { --ink:#000; --muted:rgba(0,0,0,.68); --green:#39ff14; --green-dark:#000; --green-soft:#39ff14; --green-pale:#fff; --paper:#fff; --line:#000; background:#fff; }
 body { background:#fff; }
-.app-shell { background-color:#fff; background-image:radial-gradient(#000 1px,transparent 1px); background-size:24px 24px; }
-.mist-one { background:#39ff14; left:-20rem; top:-19rem; opacity:.9; filter:none; }
+.app-shell { background-color:#fff; background-image:radial-gradient(rgba(0,0,0,.2) 1px,transparent 1px); background-size:24px 24px; }
+.mist-one { background:#39ff14; left:-20rem; top:-19rem; opacity:.65; filter:none; }
 .mist-two { background:#39ff14; right:-18rem; bottom:-17rem; opacity:.65; filter:none; }
 .brand { padding:5px 10px 5px 6px; border:3px solid #000; background:#fff; box-shadow:4px 4px 0 #39ff14; transform:rotate(-1deg); }
 .icon-button { border:3px solid #000; background:#fff; box-shadow:3px 3px 0 #39ff14; }
