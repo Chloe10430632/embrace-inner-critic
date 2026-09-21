@@ -20,7 +20,17 @@ export const useJournalStore = defineStore('journal', () => {
   const message = ref('')
   const customEmotion = ref('')
   const customBehavior = ref('')
-  const draft = reactive<JournalAnswers>({ trigger: '', critic: '', emotions: [], behaviors: [], origin: '', reply: '' })
+  const draft = reactive<JournalAnswers>({
+    trigger: '',
+    critic: '',
+    emotions: [],
+    behaviors: [],
+    origin: '',
+    reply: '',
+    reframedThought: '',
+    nextAction: '',
+    afterActionEmotion: ''
+  })
   const onboarding = useOnboardingStore()
   const auth = useAuthStore()
   const { playEffect } = useAudio()
@@ -79,7 +89,7 @@ export const useJournalStore = defineStore('journal', () => {
     return Object.fromEntries(Object.entries(draft).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value])) as JournalAnswers
   }
 
-  async function save(isComplete: boolean) {
+  async function save(isComplete: boolean, successStage = isComplete ? 14 : 6) {
     const { $api } = useNuxtApp()
     message.value = ''
     try {
@@ -92,7 +102,7 @@ export const useJournalStore = defineStore('journal', () => {
       editingEntryId.value = entry.id
       completed.value = isComplete
       playEffect(isComplete ? 'complete' : 'paper')
-      stage.value = isComplete ? 14 : 6
+      stage.value = successStage
       return true
     } catch {
       message.value = '日記目前無法儲存，請確認登入與後端服務後再試一次。'
@@ -101,12 +111,25 @@ export const useJournalStore = defineStore('journal', () => {
   }
 
   function open(entry: JournalEntry) {
-    for (const key of Object.keys(draft) as JournalKey[]) draft[key] = Array.isArray(entry.answers[key]) ? [...entry.answers[key] as string[]] : entry.answers[key] as string
+    for (const key of Object.keys(draft) as JournalKey[]) {
+      const answer = entry.answers[key]
+      draft[key] = Array.isArray(answer) ? [...answer] : typeof answer === 'string' ? answer : key === 'emotions' || key === 'behaviors' ? [] : ''
+    }
     onboarding.confirmedName = entry.criticName
     onboarding.criticName = entry.criticName
     editingEntryId.value = entry.id
     completed.value = entry.isComplete
     stage.value = 13
+  }
+
+  function openProgress(entry: JournalEntry) {
+    open(entry)
+    stage.value = 17
+  }
+
+  function beginProgress() {
+    if (!editingEntryId.value) return
+    stage.value = 17
   }
 
   async function remove(id: string) {
@@ -171,7 +194,7 @@ export const useJournalStore = defineStore('journal', () => {
   return {
     stage, entries, editingEntryId, completed, message, customEmotion, customBehavior,
     draft, currentQuestion, displayTitle, criticQuote, resetStore, loadEntries, requireAccess,
-    beginNew, save, open, remove, toggleTag, addCustomTag, availableTags, useHardReply,
+    beginNew, save, open, openProgress, beginProgress, remove, toggleTag, addCustomTag, availableTags, useHardReply,
     hasContent, formatDate, preview, displayAnswer
   }
 })

@@ -16,7 +16,7 @@ const {
 const { confirmedName, completed: hasCompletedOnboarding } = storeToRefs(onboarding)
 const {
   loadEntries, beginNew: beginNewJournal, toggleTag, addCustomTag, availableTags,
-  useHardReply, save: saveJournal, open: openEntry, remove: deleteEntry,
+  useHardReply, save: saveJournal, open: openEntry, openProgress, beginProgress, remove: deleteEntry,
   hasContent: hasJournalContent, formatDate: formatEntryDate, preview: entryPreview, displayAnswer
 } = journalStore
 const { startGoogleLogin } = auth
@@ -28,7 +28,10 @@ onMounted(async () => {
       journalStage.value = 15
     } else if (await auth.requireUser()) {
       await loadEntries()
-      if (journalStage.value < 6 || journalStage.value > 16 || journalStage.value === 16) journalStage.value = 6
+      const progressEntryId = typeof route.query.progress === 'string' ? route.query.progress : ''
+      const progressEntry = entries.value.find(entry => entry.id === progressEntryId)
+      if (progressEntry) openProgress(progressEntry)
+      else if (journalStage.value < 6 || journalStage.value > 16 || journalStage.value === 16) journalStage.value = 6
     } else {
       journalStage.value = 16
     }
@@ -38,7 +41,9 @@ onMounted(async () => {
 })
 
 onBeforeRouteLeave(() => {
-  if (journalStage.value >= 7 && journalStage.value <= 13 && hasJournalContent()) void saveJournal(completed.value)
+  const isWritingJournal = journalStage.value >= 7 && journalStage.value <= 13
+  const isTrackingProgress = journalStage.value >= 17 && journalStage.value <= 21
+  if ((isWritingJournal || isTrackingProgress) && hasJournalContent()) void saveJournal(completed.value)
 })
 
 watch(journalStage, async () => {
@@ -69,13 +74,13 @@ async function confirmDelete() {
   }
 }
 
-async function handleSave(isComplete: boolean) {
+async function handleSave(isComplete: boolean, successStage?: number, loadingMessage?: string) {
   if (isBusy.value) return
 
-  busyMessage.value = isComplete ? '正在儲存這篇日記……' : '正在儲存草稿……'
+  busyMessage.value = loadingMessage ?? (isComplete ? '正在儲存這篇日記……' : '正在儲存草稿……')
   isBusy.value = true
   try {
-    if (await saveJournal(isComplete)) await loadEntries()
+    if (await saveJournal(isComplete, successStage)) await loadEntries()
   } finally {
     isBusy.value = false
   }
@@ -99,12 +104,16 @@ async function handleSave(isComplete: boolean) {
       <h2>從今天想看見的地方開始。</h2>
       <p class="lead narrow">每一篇都可以慢慢寫、之後再回來修改。</p>
       <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
-      <button class="primary" @click="beginNewJournal">寫一篇新日記 <span>→</span></button>
+      <div class="journal-home-actions">
+        <button class="primary" @click="beginNewJournal">寫一篇新日記 <span>→</span></button>
+        <NuxtLink class="secondary" to="/progress">查看追蹤進展</NuxtLink>
+      </div>
       <div v-if="entries.length" class="entry-list">
         <article v-for="entry in entries" :key="entry.id" class="entry-card" @click="openEntry(entry)">
           <div><span>{{ formatEntryDate(entry.createdAt) }} · {{ entry.isComplete ? '已完成' : '草稿' }}</span><h3>{{ entry.criticName }} 說：「{{ entryPreview(entry) }}」</h3></div>
           <div class="entry-actions">
             <button type="button" class="secondary" @click.stop="openEntry(entry)">閱讀／修改</button>
+            <button v-if="entry.isComplete" type="button" class="progress-button" @click.stop="openProgress(entry)">追蹤進展</button>
             <button type="button" class="delete-button" @click.stop="requestDelete(entry.id)">刪除</button>
           </div>
         </article>
@@ -162,8 +171,82 @@ async function handleSave(isComplete: boolean) {
       <p class="eyebrow">第一個節點已被看見</p>
       <h2>你不需要一次<br>走完整張地圖。</h2>
       <p class="lead narrow">今天，你已經看見了一個原本很容易被忽略的聲音。</p>
-      <button class="primary" @click="journalStage = 6">回到我的日記 <span>→</span></button>
+      <button class="primary" @click="beginProgress">繼續追蹤進展 <span>→</span></button>
+      <button class="secondary completion-secondary" @click="journalStage = 6">回到我的日記</button>
       <button class="text-button" @click="journalStage = 6">關閉今天的練習</button>
+    </section>
+
+    <section v-else-if="journalStage === 17" key="progress-thought" class="scene progress-scene">
+      <p class="eyebrow">追蹤進展 · 01</p>
+      <h2>先帶著剛才看見的想法。</h2>
+      <p class="lead narrow">不需要重新寫一次，我們先把這句自我批評放在眼前。</p>
+      <article class="progress-focus-card">
+        <span>{{ confirmedName }} 當時說</span>
+        <p>「{{ journal.critic || '今天沒有寫下這句話' }}」</p>
+      </article>
+      <div class="progress-actions">
+        <button class="secondary" @click="journalStage = 6">先回到日記</button>
+        <button class="primary" @click="journalStage = 18">看看它帶來的影響 <span>→</span></button>
+      </div>
+    </section>
+
+    <section v-else-if="journalStage === 18" key="progress-impact" class="scene progress-scene">
+      <p class="eyebrow">追蹤進展 · 02</p>
+      <h2>它讓你感受到什麼，<br>又把你帶往哪裡？</h2>
+      <div class="progress-impact-grid">
+        <article><span>感受到的情緒</span><p>{{ (journal.emotions as string[]).length ? (journal.emotions as string[]).map(item => `#${item}`).join('　') : '今天沒有記錄情緒' }}</p></article>
+        <article><span>受到影響的行為</span><p>{{ (journal.behaviors as string[]).length ? (journal.behaviors as string[]).map(item => `#${item}`).join('　') : '今天沒有記錄行為' }}</p></article>
+      </div>
+      <div class="progress-actions">
+        <button class="secondary" @click="journalStage = 17">← 返回</button>
+        <button class="primary" @click="journalStage = 19">試著換一個角度 <span>→</span></button>
+      </div>
+    </section>
+
+    <section v-else-if="journalStage === 19" key="progress-reframe" class="scene progress-scene">
+      <p class="eyebrow">追蹤進展 · 03</p>
+      <h2>如果不只聽批評的聲音，<br>這件事還能怎麼理解？</h2>
+      <p class="lead narrow">重新框架不是強迫自己正向，而是找一個更貼近完整事實、也能支持現在自己的說法。</p>
+      <article class="progress-focus-card progress-focus-card-compact">
+        <span>{{ confirmedName }} 當時說</span>
+        <p>「{{ journal.critic || '今天沒有寫下這句話' }}」</p>
+      </article>
+      <textarea v-model="journal.reframedThought as string" placeholder="例如：我現在遇到困難，不代表我沒有能力；我可以先完成其中一小部分。" rows="5" />
+      <div class="progress-actions">
+        <button class="secondary" @click="journalStage = 18">← 返回</button>
+        <button class="primary" @click="journalStage = 20">想一個小行動 <span>→</span></button>
+      </div>
+    </section>
+
+    <section v-else-if="journalStage === 20" key="progress-action" class="scene progress-scene">
+      <p class="eyebrow">追蹤進展 · 04</p>
+      <h2>現在可以馬上做的<br>最小一步是什麼？</h2>
+      <p class="lead narrow">行動越小、越具體，越容易開始。它可以只是打開文件、寫下一句話，或傳出一則訊息。</p>
+      <textarea v-model="journal.nextAction as string" placeholder="例如：先打開文件，寫下第一個小標題。" rows="4" />
+      <div class="progress-actions progress-actions-wrap">
+        <button class="secondary" @click="journalStage = 19">← 返回</button>
+        <button class="text-button" @click="handleSave(true, 6, '正在保存目前的進展……')">儲存，稍後再回來</button>
+        <button class="primary" @click="journalStage = 21">我去做這個小行動 <span>→</span></button>
+      </div>
+    </section>
+
+    <section v-else-if="journalStage === 21" key="progress-emotion" class="scene progress-scene">
+      <p class="eyebrow">追蹤進展 · 05</p>
+      <h2>做完這個小行動後，<br>你現在感受到什麼？</h2>
+      <p class="lead narrow">不需要變得更開心才算有進展。請照現在真實的感受寫下來。</p>
+      <textarea v-model="journal.afterActionEmotion as string" placeholder="例如：還是有點緊張，但比剛才多了一點踏實。" rows="4" />
+      <div class="progress-actions">
+        <button class="secondary" @click="journalStage = 20">← 返回</button>
+        <button class="primary" @click="handleSave(true, 22, '正在儲存這次進展……')">儲存這次進展 <span>→</span></button>
+      </div>
+    </section>
+
+    <section v-else-if="journalStage === 22" key="progress-complete" class="scene complete-scene">
+      <div class="lit-node"><span>✦</span><i/><i/><i/></div>
+      <p class="eyebrow">這次進展已經留下</p>
+      <h2>一個很小的行動，<br>也是一條新的路。</h2>
+      <p class="lead narrow">你不需要證明自己已經完全改變。願意停下來、換一個角度並做出一步，就值得被記得。</p>
+      <button class="primary" @click="journalStage = 6">回到我的日記 <span>→</span></button>
     </section>
 
     <section v-else-if="journalStage === 16" key="login" class="scene compact-scene">

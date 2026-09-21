@@ -1,4 +1,13 @@
-export type JournalKey = 'trigger' | 'critic' | 'emotions' | 'behaviors' | 'origin' | 'reply'
+export type JournalKey =
+  | 'trigger'
+  | 'critic'
+  | 'emotions'
+  | 'behaviors'
+  | 'origin'
+  | 'reply'
+  | 'reframedThought'
+  | 'nextAction'
+  | 'afterActionEmotion'
 
 export type JournalAnswers = Record<JournalKey, string | string[]>
 

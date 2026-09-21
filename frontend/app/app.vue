@@ -64,6 +64,7 @@ watch(soundOn, setSound)
           <nav v-if="navigationOpen" id="main-navigation" class="main-nav" aria-label="主要導覽">
             <NuxtLink to="/" :aria-current="route.path === '/' ? 'page' : undefined" @click="navigationOpen = false">首頁</NuxtLink>
             <NuxtLink to="/journals" :aria-current="route.path === '/journals' ? 'page' : undefined" @click="navigationOpen = false">我的日記</NuxtLink>
+            <NuxtLink to="/progress" :aria-current="route.path === '/progress' ? 'page' : undefined" @click="navigationOpen = false">追蹤進展</NuxtLink>
             <NuxtLink to="/introduction" :aria-current="route.path === '/introduction' ? 'page' : undefined" @click="navigationOpen = false">動畫導覽</NuxtLink>
             <button v-if="authUser" type="button" @click="handleLogout">登出</button>
           </nav>
