@@ -50,12 +50,12 @@ export function useAudio() {
 
   function startAmbient() {
     if (!import.meta.client || ambientAudio) return
-    const audio = new Audio('/audio/mindful-piano.mp3')
+    const audio = new Audio()
+    audio.preload = 'metadata'
+    audio.src = '/audio/mindful-piano.mp3'
     audio.loop = true
     audio.volume = 0
-    audio.addEventListener('timeupdate', () => {
-      if (audio.currentTime >= 95) audio.currentTime = 0
-    })
+
     ambientAudio = audio
     void audio.play().then(() => fadeTo(0.22, 1500)).catch(() => { ambientAudio = null })
   }

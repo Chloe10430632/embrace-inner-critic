@@ -7,7 +7,11 @@ const journal = useJournalStore()
 const onboarding = useOnboardingStore()
 const { user: authUser } = storeToRefs(auth)
 const { completed } = storeToRefs(journal)
-const { soundOn, effectsOn, setSound, dispose } = useAudio()
+const { soundOn, effectsOn, startAmbient, setSound, dispose } = useAudio()
+
+function unlockAudio() {
+  if (soundOn.value) startAmbient()
+}
 
 async function handleLogout() {
   navigationOpen.value = false
@@ -16,12 +20,19 @@ async function handleLogout() {
 
 onMounted(async () => {
   onboarding.initialize()
+  window.addEventListener('pointerdown', unlockAudio, { once: true })
+  window.addEventListener('keydown', unlockAudio, { once: true })
+  setSound(soundOn.value)
   await auth.checkSession()
   if (new URLSearchParams(window.location.search).get('next') === 'journals') {
     await navigateTo('/journals', { replace: true })
   }
 })
-onBeforeUnmount(dispose)
+onBeforeUnmount(() => {
+  window.removeEventListener('pointerdown', unlockAudio)
+  window.removeEventListener('keydown', unlockAudio)
+  dispose()
+})
 watch(soundOn, setSound)
 </script>
 

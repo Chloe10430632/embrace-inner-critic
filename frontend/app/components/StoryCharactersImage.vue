@@ -9,11 +9,11 @@ const props = withDefaults(defineProps<{
 
 /** Returns the image URL for the current scene */
 const image = computed(() => {
-  if (props.scene === 'name') return '/illustrations/critic-wave.png'
-  if (props.scene === 'approach') return '/illustrations/critic-peek-wall.png'
-  if (props.scene === 'talk') return '/illustrations/critic-scene-pressure.png'
-  if (props.scene === 'separate') return '/illustrations/critic-scene-space.png'
-  return '/illustrations/critic-scene-rest.png'
+  if (props.scene === 'name') return '/illustrations/critic-wave.webp'
+  if (props.scene === 'approach') return '/illustrations/critic-peek-wall.webp'
+  if (props.scene === 'talk') return '/illustrations/critic-scene-pressure.webp'
+  if (props.scene === 'separate') return '/illustrations/critic-scene-space.webp'
+  return '/illustrations/critic-scene-rest.webp'
 })
 
 /** Returns the description for the current scene */
@@ -28,11 +28,11 @@ const description = computed(() => {
 
 <template>
   <figure class="story-image" :class="[`scene-${scene}`, { compact }]">
-    <img v-if="scene === 'name'" class="character-layer name-layer" :src="image" :alt="description">
-    <img v-else-if="scene === 'approach'" class="character-layer approach-layer" :src="image" :alt="description">
+    <img v-if="scene === 'name'" class="character-layer name-layer" :src="image" :alt="description" decoding="async">
+    <img v-else-if="scene === 'approach'" class="character-layer approach-layer" :src="image" :alt="description" decoding="async">
     <template v-else>
-      <img class="character-layer protagonist-layer" :src="image" :alt="description">
-      <img class="character-layer critic-layer" :src="image" alt="">
+      <img class="character-layer protagonist-layer" :src="image" :alt="description" decoding="async">
+      <img class="character-layer critic-layer" :src="image" alt="" decoding="async">
     </template>
     <span v-if="scene === 'separate'" class="breath-ring ring-one" />
     <span v-if="scene === 'separate'" class="breath-ring ring-two" />
@@ -71,18 +71,18 @@ const description = computed(() => {
 .scene-separate .critic-layer { clip-path:inset(0 0 0 66%); animation:critic-center-in .8s ease-out both,critic-center-hover 3.2s .8s ease-in-out infinite; transform-origin:80% 58%; }
 .name-layer { animation:name-arrive .8s ease-out both,hello-wave 1.8s .8s ease-in-out infinite; transform-origin:50% 54%; }
 
-.breath-ring { position:absolute; left:52%; top:52%; width:34px; height:34px; border:3px solid #39ff14; border-radius:50%; opacity:0; animation:breathing-space 2.2s ease-out infinite; }
+.breath-ring { position:absolute; left:52%; top:52%; width:34px; height:34px; border:3px solid var(--color-brand-accent); border-radius:50%; opacity:0; animation:breathing-space 2.2s ease-out infinite; }
 .ring-two { animation-delay:.7s; }
 
 .sticker-label,.motion-word {
   position: absolute;
   z-index: 2;
-  border: 4px solid #000;
+  border: 4px solid var(--color-brand-ink);
   border-radius: 999px;
   padding: 9px 15px;
-  color: #000;
-  background: #fff;
-  box-shadow: 6px 6px 0 #39ff14;
+  color: var(--color-brand-ink);
+  background: var(--color-brand-surface);
+  box-shadow: 6px 6px 0 var(--color-brand-accent);
   font-weight: 800;
   transform: rotate(-3deg);
 }
@@ -93,12 +93,12 @@ const description = computed(() => {
   z-index:2;
   right:13%;
   top:13%;
-  border:4px solid #000;
+  border:4px solid var(--color-brand-ink);
   border-radius:999px;
   padding:9px 15px;
-  color:#000;
-  background:#fff;
-  box-shadow:6px 6px 0 #39ff14;
+  color:var(--color-brand-ink);
+  background:var(--color-brand-surface);
+  box-shadow:6px 6px 0 var(--color-brand-accent);
   font-weight:800;
   animation:peek-whisper .65s .9s ease-out both;
 }

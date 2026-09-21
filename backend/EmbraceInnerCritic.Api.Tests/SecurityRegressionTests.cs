@@ -8,6 +8,7 @@ using EmbraceInnerCritic.Api.Controllers;
 using EmbraceInnerCritic.Api.Data;
 using EmbraceInnerCritic.Api.Models;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -158,6 +159,25 @@ public sealed class SecurityRegressionTests
         Assert.Contains("COUNT(*)::integer", script);
     }
 
+    [Fact]
+    public void DataProtectionKeyMigration_IsDiscoverableAndCreatesKeyTable()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql("Host=localhost;Database=unused;Username=unused;Password=unused")
+            .Options;
+        using var database = new ApplicationDbContext(options);
+
+        var migrations = database.Database.GetMigrations();
+        var script = database.GetService<IMigrator>().GenerateScript(
+            "20260916120000_AddDiaryEntryQuota",
+            "20260921095133_PersistDataProtectionKeys");
+
+        Assert.Contains("20260921095133_PersistDataProtectionKeys", migrations);
+        Assert.Contains("DataProtectionKeys", script);
+        Assert.DoesNotContain("CREATE TABLE \"AspNetUsers\"", script);
+        Assert.DoesNotContain("CREATE TABLE \"DiaryEntries\"", script);
+    }
+
     private static async Task<TestDatabase> CreateDatabaseAsync()
     {
         var connectionString = $"Data Source=security-{Guid.NewGuid()};Mode=Memory;Cache=Shared;Default Timeout=10";
@@ -253,6 +273,7 @@ internal sealed class SecurityWebApplicationFactory : WebApplicationFactory<Prog
         builder.UseEnvironment("Testing");
         builder.ConfigureServices(services =>
         {
+            services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
             services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseInMemoryDatabase("security-integration-tests"));

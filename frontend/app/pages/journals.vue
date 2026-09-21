@@ -3,6 +3,9 @@ import { journalQuestions } from '~/stores/journal'
 
 const route = useRoute()
 const ready = ref(false)
+const pendingDeleteId = ref<string | null>(null)
+const isBusy = ref(false)
+const busyMessage = ref('')
 const auth = useAuthStore()
 const onboarding = useOnboardingStore()
 const journalStore = useJournalStore()
@@ -47,14 +50,45 @@ function next(sound: 'tap' | 'paper' = 'tap') {
   playEffect(sound)
   journalStage.value++
 }
+
+function requestDelete(id: string) {
+  pendingDeleteId.value = id
+}
+
+async function confirmDelete() {
+  const id = pendingDeleteId.value
+  if (!id || isBusy.value) return
+
+  pendingDeleteId.value = null
+  busyMessage.value = '正在刪除這篇日記……'
+  isBusy.value = true
+  try {
+    if (await deleteEntry(id)) await loadEntries()
+  } finally {
+    isBusy.value = false
+  }
+}
+
+async function handleSave(isComplete: boolean) {
+  if (isBusy.value) return
+
+  busyMessage.value = isComplete ? '正在儲存這篇日記……' : '正在儲存草稿……'
+  isBusy.value = true
+  try {
+    if (await saveJournal(isComplete)) await loadEntries()
+  } finally {
+    isBusy.value = false
+  }
+}
 </script>
 
 <template>
-  <div class="map-path" aria-hidden="true">
-    <span v-for="n in 8" :key="n" class="path-dot" :class="{ lit: journalStage >= n + 5 }" />
-  </div>
+  <div class="journal-page" :inert="isBusy || pendingDeleteId !== null" :aria-busy="isBusy">
+    <div class="map-path" aria-hidden="true">
+      <span v-for="n in 8" :key="n" class="path-dot" :class="{ lit: journalStage >= n + 5 }" />
+    </div>
 
-  <Transition name="page" mode="out-in">
+    <Transition name="page" mode="out-in">
     <section v-if="!ready" key="loading" class="scene compact-scene" aria-live="polite">
       <p class="eyebrow">我的日記</p>
       <h2>正在確認登入狀態……</h2>
@@ -71,7 +105,7 @@ function next(sound: 'tap' | 'paper' = 'tap') {
           <div><span>{{ formatEntryDate(entry.createdAt) }} · {{ entry.isComplete ? '已完成' : '草稿' }}</span><h3>{{ entry.criticName }} 說：「{{ entryPreview(entry) }}」</h3></div>
           <div class="entry-actions">
             <button type="button" class="secondary" @click.stop="openEntry(entry)">閱讀／修改</button>
-            <button type="button" class="delete-button" @click.stop="deleteEntry(entry.id)">刪除</button>
+            <button type="button" class="delete-button" @click.stop="requestDelete(entry.id)">刪除</button>
           </div>
         </article>
       </div>
@@ -83,7 +117,7 @@ function next(sound: 'tap' | 'paper' = 'tap') {
       <div class="journal-topline">
         <button class="back-button" @click="journalStage--">← 返回</button>
         <span>{{ currentQuestion.eyebrow }}</span>
-        <button class="save-link" @click="saveJournal(false)">儲存並離開</button>
+        <button class="save-link" @click="handleSave(false)">儲存並離開</button>
       </div>
       <div v-if="journalStage > 8 && criticQuote" class="critic-note"><span>{{ confirmedName }} 剛才說</span>「{{ criticQuote }}」</div>
       <h2>{{ displayTitle }}</h2>
@@ -119,7 +153,7 @@ function next(sound: 'tap' | 'paper' = 'tap') {
       </div>
       <div class="review-actions">
         <button class="secondary" @click="journalStage = 7">返回修改</button>
-        <button class="primary" @click="saveJournal(true)">{{ editingEntryId ? '儲存修改' : '儲存這篇日記' }} <span>→</span></button>
+        <button class="primary" @click="handleSave(true)">{{ editingEntryId ? '儲存修改' : '儲存這篇日記' }} <span>→</span></button>
       </div>
     </section>
 
@@ -155,5 +189,28 @@ function next(sound: 'tap' | 'paper' = 'tap') {
       <NuxtLink class="secondary" to="/">保存草稿並回到首頁</NuxtLink>
       <p class="safety-footnote">文字提示可能誤判或漏掉真正的危險。你不需要等網站提醒，任何時候都可以主動尋求協助。</p>
     </section>
-  </Transition>
+    </Transition>
+  </div>
+
+  <Teleport to="body">
+    <div v-if="pendingDeleteId" class="journal-modal-backdrop" role="presentation">
+      <section class="journal-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description">
+        <p class="section-kicker">刪除日記</p>
+        <h2 id="delete-dialog-title">確定要刪除這篇日記嗎？</h2>
+        <p id="delete-dialog-description">刪除後無法復原，這篇日記的內容將不會保留。</p>
+        <div class="journal-modal-actions">
+          <button type="button" class="secondary" autofocus @click="pendingDeleteId = null">先不要</button>
+          <button type="button" class="modal-delete-button" @click="confirmDelete">確定刪除</button>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="isBusy" class="journal-busy-overlay" role="status" aria-live="assertive" aria-busy="true">
+      <div class="journal-busy-card">
+        <span class="journal-spinner" aria-hidden="true" />
+        <strong>{{ busyMessage }}</strong>
+        <p>請稍候，不要關閉或重新操作按鈕。</p>
+      </div>
+    </div>
+  </Teleport>
 </template>

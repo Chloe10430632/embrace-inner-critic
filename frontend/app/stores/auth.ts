@@ -32,7 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
     finally {
       clearSession()
       useJournalStore().resetStore()
-      await navigateTo('/')
+      window.location.replace('/')
     }
   }
 

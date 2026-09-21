@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using EmbraceInnerCritic.Api.Data;
 using EmbraceInnerCritic.Api.Filters;
 using EmbraceInnerCritic.Api.Models;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
@@ -16,6 +17,9 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<ApplicationDbContext>()
+    .SetApplicationName("EmbraceInnerCritic");
 
 builder.Services
     .AddIdentityCore<ApplicationUser>(options =>

@@ -100,7 +100,7 @@ public sealed class AuthController(
             await signInManager.SignInAsync(user, isPersistent: true);
         }
 
-        return Redirect(frontendBaseUrl + "/?login=success&next=journals");
+        return Redirect(frontendBaseUrl + "/journals?login=success");
     }
 
     [HttpPost("logout")]

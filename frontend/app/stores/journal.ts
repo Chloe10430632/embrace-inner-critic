@@ -81,6 +81,7 @@ export const useJournalStore = defineStore('journal', () => {
 
   async function save(isComplete: boolean) {
     const { $api } = useNuxtApp()
+    message.value = ''
     try {
       const entry = await $api<JournalEntry>(editingEntryId.value ? `/api/diary-entries/${editingEntryId.value}` : '/api/diary-entries', {
         method: editingEntryId.value ? 'PUT' : 'POST',
@@ -92,8 +93,10 @@ export const useJournalStore = defineStore('journal', () => {
       completed.value = isComplete
       playEffect(isComplete ? 'complete' : 'paper')
       stage.value = isComplete ? 14 : 6
+      return true
     } catch {
       message.value = '日記目前無法儲存，請確認登入與後端服務後再試一次。'
+      return false
     }
   }
 
@@ -107,13 +110,17 @@ export const useJournalStore = defineStore('journal', () => {
   }
 
   async function remove(id: string) {
-    if (!import.meta.client || !window.confirm('要刪除這篇日記嗎？這個動作無法復原。')) return
     const { $api } = useNuxtApp()
+    message.value = ''
     try {
       await $api(`/api/diary-entries/${id}`, { method: 'DELETE' })
       entries.value = entries.value.filter(entry => entry.id !== id)
       playEffect('paper')
-    } catch { message.value = '日記目前無法刪除，請稍後再試。' }
+      return true
+    } catch {
+      message.value = '日記目前無法刪除，請稍後再試。'
+      return false
+    }
   }
 
   function toggleTag(key: 'emotions' | 'behaviors', tag: string) {

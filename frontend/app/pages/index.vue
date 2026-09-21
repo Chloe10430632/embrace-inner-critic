@@ -46,10 +46,10 @@ async function shareSite() {
       <p class="lead">你知道嗎？你是你想法背後的意識，你的想法不是你的身份與價值。</p>
       <p class="lead">透過覺察地圖練習，你可以慢慢分辨它的聲音。</p>
       <button class="primary" @click="hasCompletedOnboarding ? startJournal() : startJourney()">
-        {{ hasCompletedOnboarding ? '直接開始寫日記' : '開始探索' }} <span>→</span>
+        {{ hasCompletedOnboarding ? '記錄覺察日記' : '開始探索' }} <span>→</span>
       </button>
-      <NuxtLink v-if="hasCompletedOnboarding" class="text-button replay-link" to="/introduction">重新看前面的動畫</NuxtLink>
-      <NuxtLink v-if="hasCompletedOnboarding && entries.length" class="text-button replay-link" to="/journals">查看我的日記</NuxtLink>
+      <NuxtLink v-if="hasCompletedOnboarding" class="text-button replay-link" to="/introduction">重新看動畫</NuxtLink>
+      <!-- <Nuxt。ink v-if="hasCompletedOnboarding && entries.length" class="text-button replay-link" to="/journals">查看我的日記</Nuxt。ink> -->
       <a class="welcome-more" href="#about-product">先了解這個網站 <span aria-hidden="true">↓</span></a>
     </div>
 

@@ -44,6 +44,18 @@
 - 自主性：動畫、背景音樂與按鈕音效都能關閉。
 - 回饋：不使用排行榜、連續登入、失敗懲罰或愧疚式提醒。
 
+### 更換前端色票
+
+畫面色票集中在 `frontend/app/assets/css/main.css` 最上方的 Tailwind CSS 4 `@theme`。一般換色只需要修改以下三個 token，弱化文字、透明背景、格點及陰影會跟著主色衍生：
+
+```css
+--color-brand-ink: #000000;
+--color-brand-surface: #ffffff;
+--color-brand-accent: #39ff14;
+```
+
+元件與其他樣式不得直接新增 hex、`rgb()` 或 Tailwind 內建色名；請使用 `text-brand-*`、`bg-brand-*` 等 utility，或在複雜自訂 CSS 中引用同一組 `--color-brand-*` token。插畫細節色也集中在同一個 `@theme` 區塊。瀏覽器的 `theme-color` 與靜態 `favicon.svg` 不會讀取 CSS 變數，若品牌主色改變，需同步更新這兩個非畫面樣式資產。
+
 ## 心理安全與產品限制
 
 本產品是自我覺察與紀錄工具，不提供心理疾病診斷、心理治療、醫療建議或危機介入，也不取代合格心理專業人員。
