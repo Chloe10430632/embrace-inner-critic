@@ -48,7 +48,7 @@ async function shareSite() {
       <button class="primary" @click="hasCompletedOnboarding ? startJournal() : startJourney()">
         {{ hasCompletedOnboarding ? '記錄覺察日記' : '開始探索' }} <span>→</span>
       </button>
-      <NuxtLink v-if="hasCompletedOnboarding" class="text-button replay-link" to="/introduction">重新看動畫</NuxtLink>
+      <!-- <NuxtLink v-if="hasCompletedOnboarding" class="text-button replay-link" to="/introduction">重新看動畫</NuxtLink> -->
       <!-- <Nuxt。ink v-if="hasCompletedOnboarding && entries.length" class="text-button replay-link" to="/journals">查看我的日記</Nuxt。ink> -->
       <a class="welcome-more" href="#about-product">先了解這個網站 <span aria-hidden="true">↓</span></a>
     </div>

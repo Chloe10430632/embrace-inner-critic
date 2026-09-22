@@ -114,7 +114,7 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
             <span>{{ formatEntryDate(entry.createdAt) }} · {{ entry.isComplete ? '已完成' : '草稿' }}</span>
             <div class="entry-preview">
               <div><span>觸發情境</span><p>{{ entryPreview(entry, 'trigger') }}</p></div>
-              <div><span>{{ entry.criticName }} 的批評</span><p>{{ entryPreview(entry, 'critic') }}</p></div>
+              <div><span>{{ confirmedName }} 的批評</span><p>{{ entryPreview(entry, 'critic') }}</p></div>
             </div>
           </div>
           <div class="entry-actions">
@@ -125,7 +125,7 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
         </article>
       </div>
       <p v-else class="empty-journals">第一篇不需要寫得完整，從一個當下的聲音開始就好。</p>
-      <NuxtLink class="text-button" to="/">回到歡迎頁</NuxtLink>
+      <!-- <NuxtLink class="text-button" to="/">回到歡迎頁</NuxtLink> -->
     </section>
 
     <section v-else-if="journalStage >= 7 && journalStage <= 12" :key="`question-${journalStage}`" class="scene journal-scene">
@@ -152,23 +152,26 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
 
       <div class="journal-actions">
         <button v-if="currentQuestion.key === 'origin' || currentQuestion.key === 'reply'" class="text-button" @click="next()">這題先跳過</button>
-        <button v-if="currentQuestion.key === 'reply'" class="secondary" @click="useHardReply">這真的很難，我還不知道</button>
-        <button class="primary" @click="journalStage === 12 ? journalStage = 13 : next(journalStage === 8 ? 'paper' : 'tap')">{{ journalStage === 12 ? '看看我的這段地圖' : '下一步' }} <span>→</span></button>
+        <!-- <button v-if="currentQuestion.key === 'reply'" class="secondary" @click="useHardReply">我還不知道</button> -->
+        <button class="primary" @click="journalStage === 12 ? journalStage = 13 : next(journalStage === 8 ? 'paper' : 'tap')">{{ journalStage === 12 ? '完成這次練習' : '下一步' }} <span>→</span></button>
       </div>
       <button class="help-link inline-help" @click="journalStage = 15">我現在需要協助</button>
     </section>
 
     <section v-else-if="journalStage === 13" key="review" class="scene review-scene">
       <p class="eyebrow">回顧</p>
-      <h2>這是你今天看見的一小段地圖。</h2>
-      <p class="lead">你的原始文字會保持原樣。</p>
+      <h2>這是你看見的一次練習。</h2>
+      <p class="lead">練習思考看看，你的負面批評是如何影響你的情緒與行為</p>
       <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
       <div class="review-grid">
         <article v-for="question in journalQuestions" :key="question.key"><span>{{ question.eyebrow }}</span><p>{{ displayAnswer(question.key) }}</p></article>
       </div>
       <div class="review-actions">
-        <button class="secondary" @click="journalStage = 7">返回修改</button>
-        <button class="primary" @click="handleSave(true)">{{ editingEntryId ? '儲存修改' : '儲存這篇日記' }} <span>→</span></button>
+        <button type="button" class="text-button review-return-link" @click="journalStage = 6">← 回到我的日記</button>
+        <div class="review-action-buttons">
+          <button class="secondary" @click="journalStage = 7">修改</button>
+          <button class="primary" @click="handleSave(true)">{{ editingEntryId ? '確認' : '儲存' }} </button>
+        </div>
       </div>
     </section>
 
@@ -179,7 +182,6 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
       <p class="lead narrow">今天，你成功的捕捉了一個原本很容易被忽略的聲音。</p>
       <button class="primary" @click="beginProgress">繼續追蹤進展 <span>→</span></button>
       <button class="secondary completion-secondary" @click="journalStage = 6">回到我的日記</button>
-      <button class="text-button" @click="journalStage = 6">關閉今天的練習</button>
     </section>
 
     <section v-else-if="journalStage === 17" key="progress-thought" class="scene progress-scene">

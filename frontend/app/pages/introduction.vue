@@ -48,30 +48,30 @@ watch(introductionStage, async () => {
     <section v-if="introductionStage === 1" key="sound" class="scene compact-scene">
       <div class="sound-orbit"><span>♪</span><i /><i /><i /></div>
       <p class="eyebrow">在開始以前</p>
-      <h2>想帶著一點音樂<br>一起走嗎？</h2>
-      <p class="lead">你可以隨時暫停，安靜地寫也很好。</p>
+      <h2>想帶著音樂<br>一起嗎？</h2>
+      <p class="lead">你也可以隨時在右上方的聲音設定調整。</p>
       <div class="button-stack">
         <button class="primary" @click="confirmSound(true)">播放背景音樂</button>
-        <button class="secondary" @click="confirmSound(false)">我想安靜地使用</button>
-        <label class="effect-choice"><input v-model="effectsOn" type="checkbox"> 開啟按鈕小音效</label>
+        <button class="secondary" @click="confirmSound(false)">我想安靜使用</button>
+        <label class="effect-choice"><input v-model="effectsOn" type="checkbox"> 開啟按鈕音效</label>
       </div>
     </section>
 
     <section v-else-if="introductionStage === 2" :key="`lesson-one-${lessonOne}`" class="scene lesson-scene">
-      <p class="eyebrow">認識那個熟悉的聲音 · {{ lessonOne + 1 }}/3</p>
+      <p class="eyebrow">認識你的內在批評者 · {{ lessonOne + 1 }}/3</p>
       <div class="character-stage" :class="`lesson-${lessonOne}`">
         <StoryCharactersImage :scene="lessonOne === 0 ? 'approach' : lessonOne === 1 ? 'talk' : 'separate'" />
         <template v-if="lessonOne >= 1">
-          <span class="speech s1">你怎麼又搞砸了</span><span class="speech s2">還不夠好</span>
-          <span class="speech s3">不可以停下來</span><span class="speech s4">沒有人想聽你說話</span>
-          <span class="speech s5">你那麼懶惰，做不到的</span><span class="speech s6">你總是讓人失望</span>
+          <span class="speech s1">我怎麼又搞砸了</span><span class="speech s2">我還不夠好</span>
+          <span class="speech s3">不可以停下來</span><span class="speech s4">沒有人會喜歡我</span>
+          <span class="speech s5">我很懶惰，做不到的</span><span class="speech s6">我總是讓人失望</span>
         </template>
         <div v-if="lessonOne === 2" class="breathing-space">這裡，多了一點空間</div>
       </div>
-      <h2 v-if="lessonOne === 0">他總是在旁邊</h2>
-      <h2 v-else-if="lessonOne === 1">他說的話，大部分都很 mean</h2>
-      <h2 v-else>先把「他的聲音」和「我」分開</h2>
-      <p v-if="lessonOne === 0" class="lead narrow">有時候，我們心裡會出現一個很熟悉的聲音。當我們休息、犯錯或不知道下一步時，他就急著催促我們。</p>
+      <h2 v-if="lessonOne === 0">他總是在我們不留意的時候說話</h2>
+      <h2 v-else-if="lessonOne === 1">而且他說的話，大部分都很 mean</h2>
+      <h2 v-else>試著先把「批評的聲音」和「真實的我」分開</h2>
+      <p v-if="lessonOne === 0" class="lead narrow">有時候，我們心裡會出現一個很熟悉的聲音。當我們休息、犯錯或不知道下一步時，他就急著催促、辱罵我們。</p>
       <p v-else-if="lessonOne === 1" class="lead narrow">那些話很尖銳，卻熟悉得像是我們自己的聲音。</p>
       <p v-else class="lead narrow">一個想法出現在腦中，不代表它就是事實，也不代表它是完整的你。我們先練習認出：喔，原來又是他在說話。</p>
       <button class="primary" @click="advanceLessonOne">{{ lessonOne < 2 ? '繼續看看' : '替他取個名字' }} <span>→</span></button>

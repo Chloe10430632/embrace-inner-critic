@@ -25,9 +25,17 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   }
 
   function confirmName() {
-    confirmedName.value = criticName.value.trim() || '山姆'
-    if (import.meta.client) localStorage.setItem('embrace-inner-critic:critic-name', confirmedName.value)
+    setName(criticName.value.trim() || '山姆')
     stage.value = 4
+  }
+
+  function setName(name: string) {
+    const nextName = name.trim()
+    if (!nextName || nextName.length > 16) return false
+    confirmedName.value = nextName
+    criticName.value = nextName
+    if (import.meta.client) localStorage.setItem('embrace-inner-critic:critic-name', nextName)
+    return true
   }
 
   function markCompleted() {
@@ -35,5 +43,5 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     if (import.meta.client) localStorage.setItem('embrace-inner-critic:onboarding-complete', 'true')
   }
 
-  return { stage, lessonOne, lessonTwo, criticName, confirmedName, completed, initialize, restart, confirmName, markCompleted }
+  return { stage, lessonOne, lessonTwo, criticName, confirmedName, completed, initialize, restart, confirmName, setName, markCompleted }
 })

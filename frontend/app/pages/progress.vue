@@ -40,7 +40,7 @@ onMounted(async () => {
   <section v-else class="scene progress-overview-scene">
     <div class="progress-overview-heading">
       <div>
-        <p class="eyebrow">追蹤進展</p>
+        <!-- <p class="eyebrow">追蹤進展</p> -->
         <h2>把反覆出現的聲音，<br>和你走過的路放在一起看。</h2>
         <p class="lead">每一列都是一次從自我批評，到重新理解並採取行動的歷程。</p>
       </div>

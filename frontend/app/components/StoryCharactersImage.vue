@@ -37,7 +37,7 @@ const description = computed(() => {
     <span v-if="scene === 'separate'" class="breath-ring ring-one" />
     <span v-if="scene === 'separate'" class="breath-ring ring-two" />
     <!-- <span v-if="scene === 'welcome'" class="sticker-label">從辨認它的聲音開始</span> -->
-    <span v-if="scene === 'approach'" class="peek-speech">……你要休息了嗎？</span>
+    <span v-if="scene === 'approach'" class="peek-speech">我還不夠好......</span>
   </figure>
 </template>
 
@@ -71,7 +71,7 @@ const description = computed(() => {
 .scene-separate .critic-layer { clip-path:inset(0 0 0 66%); animation:critic-center-in .8s ease-out both,critic-center-hover 3.2s .8s ease-in-out infinite; transform-origin:80% 58%; }
 .name-layer { animation:name-arrive .8s ease-out both,hello-wave 1.8s .8s ease-in-out infinite; transform-origin:50% 54%; }
 
-.breath-ring { position:absolute; left:52%; top:52%; width:34px; height:34px; border:3px solid var(--color-brand-accent); border-radius:50%; opacity:0; animation:breathing-space 2.2s ease-out infinite; }
+.breath-ring { position:absolute; left:52%; top:34%; width:34px; height:34px; border:3px solid var(--color-brand-accent); border-radius:50%; opacity:0; animation:breathing-space 2.2s ease-out infinite; }
 .ring-two { animation-delay:.7s; }
 
 .sticker-label,.motion-word {
@@ -91,8 +91,8 @@ const description = computed(() => {
 .peek-speech {
   position:absolute;
   z-index:2;
-  right:13%;
-  top:13%;
+  right:50%;
+  top:40%;
   border:4px solid var(--color-brand-ink);
   border-radius:999px;
   padding:9px 15px;
@@ -133,7 +133,7 @@ const description = computed(() => {
   .name-layer { animation:name-arrive-mobile .8s ease-out both,hello-wave-mobile 1.8s .8s ease-in-out infinite; }
   .sticker-label { left:1%; top:3%; font-size:.7rem; }
   .motion-word { right:0; top:5%; font-size:.7rem; }
-  .peek-speech { right:4%; top:8%; padding:7px 10px; border-width:3px; font-size:.7rem; }
+  .peek-speech { right:50%; top:40%; padding:7px 10px; border-width:3px; font-size:.7rem; }
   .compact { height:190px; }
 
   @keyframes critic-center-in-mobile { from { opacity:0; transform:translate(-32px,-42px) scale(.96); } to { opacity:1; transform:translate(-48px,-68px); } }

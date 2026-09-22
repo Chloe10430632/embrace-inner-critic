@@ -115,8 +115,6 @@ export const useJournalStore = defineStore('journal', () => {
       const answer = entry.answers[key]
       draft[key] = Array.isArray(answer) ? [...answer] : typeof answer === 'string' ? answer : key === 'emotions' || key === 'behaviors' ? [] : ''
     }
-    onboarding.confirmedName = entry.criticName
-    onboarding.criticName = entry.criticName
     editingEntryId.value = entry.id
     completed.value = entry.isComplete
     stage.value = 13
