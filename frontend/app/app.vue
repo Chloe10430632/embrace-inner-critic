@@ -24,9 +24,6 @@ onMounted(async () => {
   window.addEventListener('keydown', unlockAudio, { once: true })
   setSound(soundOn.value)
   await auth.checkSession()
-  if (new URLSearchParams(window.location.search).get('next') === 'journals') {
-    await navigateTo('/journals', { replace: true })
-  }
 })
 onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', unlockAudio)
@@ -56,7 +53,7 @@ watch(soundOn, setSound)
           </button>
           <div v-if="soundPanel" class="sound-panel">
             <label><input v-model="soundOn" type="checkbox"> 背景聲景</label>
-            <label><input v-model="effectsOn" type="checkbox"> 按鈕小音效</label>
+            <label><input v-model="effectsOn" type="checkbox"> 按鈕音效</label>
           </div>
         </div>
         <div class="navigation-wrap">

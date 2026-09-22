@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EmbraceInnerCritic.Api.Controllers;
 
+
+//密封類別 (Sealed Class)：當類別加上 sealed 時，其他類別無法再繼承它。
+//這能保護類別的內部實作不被子類別破壞或非預期修改。
 [ApiController]
 [Route("api/auth")]
 public sealed class AuthController(
@@ -18,6 +21,7 @@ public sealed class AuthController(
     [Authorize]
     public async Task<IActionResult> Me()
     {
+        // 根據請求附帶的登入 Cookie，找出目前登入的本站使用者。
         var user = await userManager.GetUserAsync(User);
         if (user is null)
         {
@@ -42,9 +46,13 @@ public sealed class AuthController(
                 statusCode: StatusCodes.Status503ServiceUnavailable);
         }
 
+        // Google 驗證完成後，最後要回到本站的 google-response。
         var redirectUrl = Url.ActionLink(nameof(GoogleResponse), values: null)
             ?? throw new InvalidOperationException("無法建立 Google 登入回呼網址。");
+
+        // 放外部登入需要的資訊，例如完成後的回跳位置
         var properties = signInManager.ConfigureExternalAuthenticationProperties("Google", redirectUrl);
+        // 交給 ASP.NET Core 的 Google 驗證流程，瀏覽器會被導向 Google。
         return Challenge(properties, "Google");
     }
 
@@ -52,6 +60,7 @@ public sealed class AuthController(
     public async Task<IActionResult> GoogleResponse()
     {
         var frontendBaseUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
+        // 讀取 Google 驗證後暫存的外部登入資料；失敗就回前端顯示失敗。
         var loginInfo = await signInManager.GetExternalLoginInfoAsync();
         if (loginInfo is null)
         {
@@ -59,6 +68,7 @@ public sealed class AuthController(
             return Redirect(frontendBaseUrl + "/?login=failed");
         }
 
+        // 已綁定 Google 帳號的本站使用者，可直接登入並取得本站的登入 Cookie。
         var signInResult = await signInManager.ExternalLoginSignInAsync(
             loginInfo.LoginProvider,
             loginInfo.ProviderKey,
@@ -66,6 +76,7 @@ public sealed class AuthController(
 
         if (!signInResult.Succeeded)
         {
+            // 第一次用這個 Google 帳號登入：取得 email，建立本站帳號並綁定 Google 登入。
             var email = loginInfo.Principal.FindFirstValue(ClaimTypes.Email);
             if (string.IsNullOrWhiteSpace(email))
             {
@@ -97,9 +108,11 @@ public sealed class AuthController(
                 return Redirect(frontendBaseUrl + "/?login=failed");
             }
 
+            // 新帳號也要登入，讓瀏覽器收到本站的登入 Cookie。
             await signInManager.SignInAsync(user, isPersistent: true);
         }
 
+        // 登入完成後回到前端；前端再呼叫 /api/auth/me 確認使用者。
         return Redirect(frontendBaseUrl + "/journals?login=success");
     }
 
@@ -107,6 +120,7 @@ public sealed class AuthController(
     [Authorize]
     public async Task<IActionResult> Logout()
     {
+        // 清除本站登入 Cookie，結束這次登入狀態。
         await signInManager.SignOutAsync();
         return NoContent();
     }

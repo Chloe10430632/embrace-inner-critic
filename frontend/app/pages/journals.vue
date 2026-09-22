@@ -101,7 +101,7 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
 
     <section v-else-if="journalStage === 6" key="journal-home" class="scene journal-home-scene">
       <p class="eyebrow">我的日記</p>
-      <h2>從今天想看見的地方開始。</h2>
+      <h2>紀錄 {{ confirmedName }} 的慣性思考方式</h2>
       <p class="lead narrow">每一篇都可以慢慢寫、之後再回來修改。</p>
       <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
       <div class="journal-home-actions">
@@ -110,7 +110,13 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
       </div>
       <div v-if="entries.length" class="entry-list">
         <article v-for="entry in entries" :key="entry.id" class="entry-card" @click="openEntry(entry)">
-          <div><span>{{ formatEntryDate(entry.createdAt) }} · {{ entry.isComplete ? '已完成' : '草稿' }}</span><h3>{{ entry.criticName }} 說：「{{ entryPreview(entry) }}」</h3></div>
+          <div class="entry-content">
+            <span>{{ formatEntryDate(entry.createdAt) }} · {{ entry.isComplete ? '已完成' : '草稿' }}</span>
+            <div class="entry-preview">
+              <div><span>觸發情境</span><p>{{ entryPreview(entry, 'trigger') }}</p></div>
+              <div><span>{{ entry.criticName }} 的批評</span><p>{{ entryPreview(entry, 'critic') }}</p></div>
+            </div>
+          </div>
           <div class="entry-actions">
             <button type="button" class="secondary" @click.stop="openEntry(entry)">閱讀／修改</button>
             <button v-if="entry.isComplete" type="button" class="progress-button" @click.stop="openProgress(entry)">追蹤進展</button>
@@ -145,8 +151,8 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
       <textarea v-else v-model="journal[currentQuestion.key] as string" :placeholder="currentQuestion.placeholder" rows="5" />
 
       <div class="journal-actions">
-        <button v-if="currentQuestion.key === 'reply'" class="secondary" @click="useHardReply">這真的很難，我還不知道</button>
         <button v-if="currentQuestion.key === 'origin' || currentQuestion.key === 'reply'" class="text-button" @click="next()">這題先跳過</button>
+        <button v-if="currentQuestion.key === 'reply'" class="secondary" @click="useHardReply">這真的很難，我還不知道</button>
         <button class="primary" @click="journalStage === 12 ? journalStage = 13 : next(journalStage === 8 ? 'paper' : 'tap')">{{ journalStage === 12 ? '看看我的這段地圖' : '下一步' }} <span>→</span></button>
       </div>
       <button class="help-link inline-help" @click="journalStage = 15">我現在需要協助</button>
@@ -168,9 +174,9 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
 
     <section v-else-if="journalStage === 14" key="complete" class="scene complete-scene">
       <div class="lit-node"><span>✦</span><i/><i/><i/></div>
-      <p class="eyebrow">第一個節點已被看見</p>
-      <h2>你不需要一次<br>走完整張地圖。</h2>
-      <p class="lead narrow">今天，你已經看見了一個原本很容易被忽略的聲音。</p>
+      <p class="eyebrow">又有一句話被你看見了</p>
+      <h2>感謝自己的紀錄和能量</h2>
+      <p class="lead narrow">今天，你成功的捕捉了一個原本很容易被忽略的聲音。</p>
       <button class="primary" @click="beginProgress">繼續追蹤進展 <span>→</span></button>
       <button class="secondary completion-secondary" @click="journalStage = 6">回到我的日記</button>
       <button class="text-button" @click="journalStage = 6">關閉今天的練習</button>

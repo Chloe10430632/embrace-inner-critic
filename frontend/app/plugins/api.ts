@@ -7,6 +7,8 @@ export default defineNuxtPlugin(() => {
   async function getCsrfToken() {
     if (csrfToken) return csrfToken
 
+
+    //csrfRequest ??=：只有當 csrfRequest 是 null 或 undefined，才執行右邊的請求並存起來。
     csrfRequest ??= $fetch<{ requestToken: string }>('/api/auth/csrf', {
       baseURL: config.public.apiBase,
       credentials: 'include'

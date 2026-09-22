@@ -4,12 +4,12 @@ const emotions = ['羞恥', '焦慮', '害怕', '憤怒', '難過', '挫折', '�
 const behaviors = ['逃避', '討好', '拖延', '反擊', '僵住', '過度工作', '反覆確認', '責怪自己', '放棄']
 
 export const journalQuestions: JournalQuestion[] = [
-  { key: 'trigger', eyebrow: '01 · 觸發', title: '什麼情況下，{name} 出現了？', help: '寫下當時發生了什麼事，不需要先分析原因，很簡短也可以喔！', placeholder: '例如：主管問我為什麼還沒完成工作……' },
-  { key: 'critic', eyebrow: '02 · 聽見', title: '那一刻，{name} 對你說了什麼？', help: '一次只抓住一句現在感受最強烈的話。照原本的樣子寫下來，不用替它修飾。', placeholder: '他說：「你時間管理真的有問題……」' },
-  { key: 'emotions', eyebrow: '03 · 感受', title: '聽見這句話時，你感受到什麼？', help: '可以選很多個，也可以用自己的方式形容。' },
-  { key: 'behaviors', eyebrow: '04 · 行動', title: '聽見這句話後，你的行為受到什麼影響？', help: '不需要判斷好壞，只要看看它把你帶往哪裡。' },
-  { key: 'origin', eyebrow: '05 · 種子', title: '這個自我批評的種子，是怎麼形成的呢？', help: '也許來自家庭、學校、老師、同儕或其他關係；也可能暫時想不到。這裡不用一定要找到源頭。', placeholder: '它讓我想到……' },
-  { key: 'reply', eyebrow: '06 · 回應', title: '如果是你的朋友遇到一樣的事，你會怎麼支持他？', help: '想不到也沒有關係。你可以承認：「這真的很難，我還不知道要怎麼回答。」', placeholder: '我想對自己說……' }
+  { key: 'trigger', eyebrow: '01 · 情境', title: '什麼情況下，{name} 出現了？', help: '寫下是甚麼情境觸發了內在批評者，不需要分析原因，很簡短也可以！', placeholder: '例如：主管問我為什麼還沒完成工作……' },
+  { key: 'critic', eyebrow: '02 · 自我批評', title: '寫下 {name} 對你說的具體內容', help: '一次只寫一句最常在你腦中響起的自我批判的想法。 照原本的樣子寫下來，不用替它修飾。', placeholder: '他說：「你時間管理真的有問題……」' },
+  { key: 'emotions', eyebrow: '03 · 情緒', title: '當這句話出現，你感受到什麼？', help: '可以選很多個，最好可以用自己的方式形容。' },
+  { key: 'behaviors', eyebrow: '04 · 行為', title: '把這個想法所引發「最重大」的行為記錄下來', help: '不需要判斷好壞，我們要看看這個想法如何影響你的行為決策。' },
+  { key: 'origin', eyebrow: '05 · 種子', title: '這個種子，是怎麼形成的呢？', help: '回想你第一次遇到這個自我批評的想法的時候，是什麼樣的情況導致你有這些想法？也許來自家庭、學校、老師、同儕或其他關係。也可能暫時想不到。', placeholder: '它讓我想到……' },
+  { key: 'reply', eyebrow: '06 · 重新框架', title: '假設你最要好的朋友聽見 {name} 說的話，想想他們會怎麼說？', help: '一個真正關心你的好朋友，聽見那些錯誤的評價，會如何提供你善意和支持。', placeholder: '我想對自己說……' }
 ]
 
 export const useJournalStore = defineStore('journal', () => {
@@ -182,8 +182,9 @@ export const useJournalStore = defineStore('journal', () => {
     return new Intl.DateTimeFormat('zh-TW', { dateStyle: 'medium' }).format(new Date(isoDate))
   }
 
-  function preview(entry: JournalEntry) {
-    return String(entry.answers.critic || entry.answers.trigger || '今天先沒有留下文字。').slice(0, 72)
+  function preview(entry: JournalEntry, key: 'trigger' | 'critic') {
+    const text = String(entry.answers[key] || '').trim()
+    return text ? `${text.slice(0, 30)}${text.length > 30 ? '…' : ''}` : '尚未記錄'
   }
 
   function displayAnswer(key: JournalKey) {

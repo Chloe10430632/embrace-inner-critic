@@ -2,6 +2,9 @@ type AuthUser = { id: string; email: string | null }
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
+
+  //有沒有向後端確認過目前的登入狀態？
+  //還沒查過就先查；查完後，再看 user 有沒有資料。
   const checked = ref(false)
 
   function clearSession() {
