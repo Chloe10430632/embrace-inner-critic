@@ -94,9 +94,9 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
     </div>
 
     <Transition name="page" mode="out-in">
-    <section v-if="!ready" key="loading" class="scene compact-scene" aria-live="polite">
-      <p class="eyebrow">我的日記</p>
-      <h2>正在確認登入狀態……</h2>
+    <section v-if="!ready" key="loading" class="scene compact-scene" role="status">
+      <span class="journal-spinner" aria-hidden="true" />
+      <p class="page-loading-caption">載入時光紀錄</p>
     </section>
 
     <section v-else-if="journalStage === 6" key="journal-home" class="scene journal-home-scene">

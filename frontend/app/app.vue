@@ -4,6 +4,7 @@ const soundPanel = ref(false)
 const editingName = ref(false)
 const nameDraft = ref('')
 const nameError = ref('')
+const savingName = ref(false)
 const soundWrap = ref<HTMLElement | null>(null)
 const navigationWrap = ref<HTMLElement | null>(null)
 const route = useRoute()
@@ -32,13 +33,25 @@ function startEditingName() {
   editingName.value = true
 }
 
-function saveName() {
-  if (!onboarding.setName(nameDraft.value)) {
-    nameError.value = '請輸入 1 至 16 個字的名稱。'
+async function saveName() {
+  if (savingName.value) return
+  if (!authUser.value) {
+    nameError.value = '請先登入，才能儲存名稱。'
     return
   }
-  editingName.value = false
-  navigationOpen.value = false
+  savingName.value = true
+  try {
+    if (!await onboarding.setName(nameDraft.value)) {
+      nameError.value = '請輸入 1 至 64 個字的名稱。'
+      return
+    }
+    editingName.value = false
+    navigationOpen.value = false
+  } catch {
+    nameError.value = '名稱目前無法儲存，請稍後再試。'
+  } finally {
+    savingName.value = false
+  }
 }
 
 async function handleLogout() {
@@ -61,6 +74,9 @@ onBeforeUnmount(() => {
   dispose()
 })
 watch(soundOn, setSound)
+watch(authUser, (user) => {
+  if (!user) editingName.value = false
+})
 </script>
 
 <template>
@@ -88,19 +104,19 @@ watch(soundOn, setSound)
         </div>
         <div ref="navigationWrap" class="navigation-wrap">
           <button class="icon-button menu-button" :aria-expanded="navigationOpen" aria-controls="main-navigation" aria-label="開啟主要導覽" @click="navigationOpen = !navigationOpen"><span /><span /><span /></button>
-          <nav v-if="navigationOpen" id="main-navigation" class="main-nav" :class="{ 'main-nav-editing': editingName }" aria-label="主要導覽">
+          <nav v-if="navigationOpen" id="main-navigation" class="main-nav" :class="{ 'main-nav-editing': authUser && editingName }" aria-label="主要導覽">
             <NuxtLink to="/" :aria-current="route.path === '/' ? 'page' : undefined" @click="navigationOpen = false">首頁</NuxtLink>
+            <NuxtLink to="/introduction" :aria-current="route.path === '/introduction' ? 'page' : undefined" @click="navigationOpen = false">動畫導覽</NuxtLink>
             <NuxtLink to="/journals" :aria-current="route.path === '/journals' ? 'page' : undefined" @click="navigationOpen = false">我的日記</NuxtLink>
             <NuxtLink to="/progress" :aria-current="route.path === '/progress' ? 'page' : undefined" @click="navigationOpen = false">追蹤進展</NuxtLink>
-            <NuxtLink to="/introduction" :aria-current="route.path === '/introduction' ? 'page' : undefined" @click="navigationOpen = false">動畫導覽</NuxtLink>
-            <button v-if="!editingName" type="button" @click="startEditingName">修改批評者名稱</button>
-            <form v-else class="critic-name-editor" @submit.prevent="saveName">
+            <button v-if="authUser && !editingName" type="button" @click="startEditingName">修改批評者名稱</button>
+            <form v-else-if="authUser && editingName" class="critic-name-editor" @submit.prevent="saveName">
               <label for="critic-name-input">內在批評者的名稱</label>
-              <input id="critic-name-input" v-model="nameDraft" maxlength="16" autocomplete="off" @input="nameError = ''">
+              <input id="critic-name-input" v-model="nameDraft" maxlength="64" autocomplete="off" :disabled="savingName" @input="nameError = ''">
               <p v-if="nameError" role="alert">{{ nameError }}</p>
               <div class="critic-name-actions">
-                <button type="button" @click="editingName = false">取消</button>
-                <button type="submit">儲存</button>
+                <button type="button" :disabled="savingName" @click="editingName = false">取消</button>
+                <button type="submit" :disabled="savingName">{{ savingName ? '儲存中…' : '儲存' }}</button>
               </div>
             </form>
             <button v-if="authUser" type="button" @click="handleLogout">登出</button>

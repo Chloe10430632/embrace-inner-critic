@@ -16,8 +16,8 @@ function advanceLessonOne() {
   else introductionStage.value = 3
 }
 
-function confirmCriticName() {
-  onboarding.confirmName()
+async function confirmCriticName() {
+  await onboarding.confirmName()
   playEffect('paper')
 }
 
@@ -73,7 +73,7 @@ watch(introductionStage, async () => {
       <h2 v-else>試著先把「批評的聲音」和「真實的我」分開</h2>
       <p v-if="lessonOne === 0" class="lead narrow">有時候，我們心裡會出現一個很熟悉的聲音。當我們休息、犯錯或不知道下一步時，他就急著催促、辱罵我們。</p>
       <p v-else-if="lessonOne === 1" class="lead narrow">那些話很尖銳，卻熟悉得像是我們自己的聲音。</p>
-      <p v-else class="lead narrow">一個想法出現在腦中，不代表它就是事實，也不代表它是完整的你。我們先練習認出：喔，原來又是他在說話。</p>
+      <p v-else class="lead narrow">一個想法出現在腦中，不代表它就是事實，也不代表它是完整的你。<br>我們先練習辨認：原來又是「他」在說話。</p>
       <button class="primary" @click="advanceLessonOne">{{ lessonOne < 2 ? '繼續看看' : '替他取個名字' }} <span>→</span></button>
     </section>
 
@@ -81,34 +81,31 @@ watch(introductionStage, async () => {
       <StoryCharactersImage scene="name" compact />
       <p class="eyebrow">讓聲音變得可辨認</p>
       <h2>如果要替這個聲音取一個名字，<br>你想叫他什麼？</h2>
-      <p class="lead narrow">替他取名，不是為了趕走他，只是幫助我們更容易知道現在是誰在說話。</p>
+      <p class="lead narrow">替他取名，是為了幫助我們更容易隔離出這個聲音，逐漸擺脫他的控制。</p>
       <label class="name-field">
         <span>我的內在批評者叫做</span>
-        <input v-model="criticName" maxlength="16" placeholder="例如：山姆" @keyup.enter="confirmCriticName">
-        <small>之後可以修改。</small>
+        <input v-model="criticName" maxlength="64" placeholder="例如：山姆 (之後可以修改)" @keyup.enter="confirmCriticName">
       </label>
       <button class="primary" @click="confirmCriticName">就叫這個名字 <span>→</span></button>
     </section>
 
     <section v-else-if="introductionStage === 4" :key="`lesson-two-${lessonTwo}`" class="scene lesson-scene">
-      <p class="eyebrow">改變從看見開始 · {{ lessonTwo + 1 }}/2</p>
+      <p class="eyebrow">改變從察覺開始 · {{ lessonTwo + 1 }}/2</p>
       <div class="road-stage" :class="{ illuminated: lessonTwo === 1 }"><div class="old-road"/><div class="new-road"/><div class="lamp">✦</div></div>
-      <h2 v-if="lessonTwo === 0">熟悉，不等於不能改變</h2>
-      <h2 v-else>今天只需要看見一次</h2>
-      <p v-if="lessonTwo === 0" class="lead narrow">一個想法出現很多次，我們的身體為了節能，聰明地學會讓這條路變得很熟悉、很自動。但熟悉，不代表它永遠不能改變。</p>
-      <p v-else class="lead narrow">每一次停下來，看見「他現在又說了什麼」，都在替自己多留一點選擇的空間。我們不用著急地一下子改變所有事情。</p>
-      <button class="primary" @click="advanceLessonTwo">{{ lessonTwo === 0 ? '照亮另一條路' : '開始第一次覺察練習' }} <span>→</span></button>
-      <NuxtLink v-if="lessonTwo === 1" class="text-button" to="/">今天先到這裡</NuxtLink>
+      <h2 v-if="lessonTwo === 0">透過練習，重塑慣性的行為/思想</h2>
+      <h2 v-else>每一次看見，都代表一個扭轉的可能</h2>
+      <p v-if="lessonTwo === 0" class="lead narrow">我們應該時時留意自我批判符不符合事實，並非照單全收。運用神經的可塑性來扭轉對偏誤的認知，既然是透過學習而學來的行為，也能透過反向練習改變你的思想與行為。</p>
+      <p v-else class="lead narrow">聽聽「自我批判者現在又說什麼」，並替自己多留一點選擇的空間。我們不用著急地一下子改變所有事情，重點是要持續地練習。</p>
+      <button class="primary" @click="advanceLessonTwo">{{ lessonTwo === 0 ? '照亮另一條路' : '開始覺察練習' }}</button>
     </section>
 
     <section v-else key="ready" class="scene compact-scene">
       <div class="blank-node"><span>01</span></div>
-      <p class="eyebrow">第一個節點</p>
-      <h2>開始前，先看看現在的自己。</h2>
-      <p class="lead narrow">你可以隨時跳過、返回或停下來，已經寫下的部分仍然有意義。</p>
+      <p class="eyebrow">給自己一段時間持續練習</p>
+      <h2>開始前的信心喊話</h2>
+      <p class="lead narrow">慢慢來，簡短的開始、不完整也沒有關係，重點是思考不是結果。</p>
+      <p class="lead narrow">選定一個時間、地點，持之以恆，不用累積字數，想停就停。</p>
       <button class="primary" @click="startJournal">開始吧！ <span>→</span></button>
-      <NuxtLink class="text-button" to="/">今天先不寫</NuxtLink>
-      <NuxtLink class="help-link" to="/journals?view=safety">我現在需要協助</NuxtLink>
     </section>
   </Transition>
 </template>

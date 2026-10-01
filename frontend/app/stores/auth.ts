@@ -1,4 +1,4 @@
-type AuthUser = { id: string; email: string | null }
+type AuthUser = { id: string; email: string | null; criticName: string }
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
@@ -26,7 +26,18 @@ export const useAuthStore = defineStore('auth', () => {
   function startGoogleLogin() {
     if (!import.meta.client) return
     const config = useRuntimeConfig()
-    window.location.assign(config.public.apiBase + '/api/auth/google')
+    const pendingName = useOnboardingStore().pendingName
+    const query = pendingName ? `?criticName=${encodeURIComponent(pendingName)}` : ''
+    window.location.assign(config.public.apiBase + '/api/auth/google' + query)
+  }
+
+  async function updateCriticName(name: string) {
+    const { $api } = useNuxtApp()
+    const result = await $api<{ criticName: string }>('/api/auth/critic-name', {
+      method: 'PUT',
+      body: { criticName: name }
+    })
+    if (user.value) user.value.criticName = result.criticName
   }
 
   async function logout() {
@@ -34,10 +45,11 @@ export const useAuthStore = defineStore('auth', () => {
     try { await $api('/api/auth/logout', { method: 'POST' }) }
     finally {
       clearSession()
+      useOnboardingStore().clearPendingName()
       useJournalStore().resetStore()
       window.location.replace('/')
     }
   }
 
-  return { user, checked, clearSession, checkSession, requireUser, startGoogleLogin, logout }
+  return { user, checked, clearSession, checkSession, requireUser, startGoogleLogin, updateCriticName, logout }
 })

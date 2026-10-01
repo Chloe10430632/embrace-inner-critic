@@ -23,9 +23,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section v-if="!ready" class="scene compact-scene" aria-live="polite">
-    <p class="eyebrow">追蹤進展</p>
-    <h2>正在整理你的進展……</h2>
+  <section v-if="!ready" class="scene compact-scene" role="status">
+    <span class="journal-spinner" aria-hidden="true" />
+    <p class="page-loading-caption">載入時光紀錄</p>
   </section>
 
   <section v-else-if="!signedIn" class="scene compact-scene">

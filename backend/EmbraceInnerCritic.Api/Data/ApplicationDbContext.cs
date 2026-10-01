@@ -17,6 +17,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
         builder.Entity<ApplicationUser>(entity =>
         {
+            entity.Property(user => user.CriticName).HasDefaultValue("山姆");
             entity.ToTable("AspNetUsers", table =>
                 table.HasCheckConstraint(
                     "CK_AspNetUsers_DiaryEntryCount_NonNegative",

@@ -3,7 +3,8 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   const lessonOne = ref(0)
   const lessonTwo = ref(0)
   const criticName = ref('')
-  const confirmedName = ref('山姆')
+  const pendingName = ref('')
+  const confirmedName = computed(() => useAuthStore().user?.criticName || pendingName.value || '山姆')
   const completed = ref(false)
   const initialized = ref(false)
 
@@ -11,11 +12,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     if (!import.meta.client || initialized.value) return
     initialized.value = true
     completed.value = localStorage.getItem('embrace-inner-critic:onboarding-complete') === 'true'
-    const storedName = localStorage.getItem('embrace-inner-critic:critic-name')
-    if (storedName) {
-      criticName.value = storedName
-      confirmedName.value = storedName
-    }
   }
 
   function restart() {
@@ -24,17 +20,22 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     stage.value = 1
   }
 
-  function confirmName() {
-    setName(criticName.value.trim() || '山姆')
-    stage.value = 4
+  function clearPendingName() {
+    pendingName.value = ''
+    criticName.value = ''
   }
 
-  function setName(name: string) {
+  async function confirmName() {
+    if (await setName(criticName.value.trim() || '山姆')) stage.value = 4
+  }
+
+  async function setName(name: string) {
     const nextName = name.trim()
-    if (!nextName || nextName.length > 16) return false
-    confirmedName.value = nextName
+    if (!nextName || nextName.length > 64) return false
+    const auth = useAuthStore()
+    if (auth.user) await auth.updateCriticName(nextName)
+    else pendingName.value = nextName
     criticName.value = nextName
-    if (import.meta.client) localStorage.setItem('embrace-inner-critic:critic-name', nextName)
     return true
   }
 
@@ -43,5 +44,5 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     if (import.meta.client) localStorage.setItem('embrace-inner-critic:onboarding-complete', 'true')
   }
 
-  return { stage, lessonOne, lessonTwo, criticName, confirmedName, completed, initialize, restart, confirmName, setName, markCompleted }
+  return { stage, lessonOne, lessonTwo, criticName, pendingName, confirmedName, completed, initialize, restart, clearPendingName, confirmName, setName, markCompleted }
 })

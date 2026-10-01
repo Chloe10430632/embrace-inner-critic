@@ -73,12 +73,17 @@ public sealed class DiaryEntriesController(ApplicationDbContext database) : Cont
                 new { error = $"每個帳號最多可儲存 {MaxEntriesPerUser} 篇日記。" });
         }
 
+        var criticName = await database.Users
+            .Where(user => user.Id == userId)
+            .Select(user => user.CriticName)
+            .SingleAsync();
+
         var now = DateTimeOffset.UtcNow;
         var entry = new DiaryEntry
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            CriticName = request.CriticName.Trim(),
+            CriticName = criticName,
             AnswersJson = request.Answers.GetRawText(),
             IsComplete = request.IsComplete,
             CreatedAt = now,
@@ -106,7 +111,6 @@ public sealed class DiaryEntriesController(ApplicationDbContext database) : Cont
             return NotFound();
         }
 
-        entry.CriticName = request.CriticName.Trim();
         entry.AnswersJson = request.Answers.GetRawText();
         entry.IsComplete = request.IsComplete;
         entry.UpdatedAt = DateTimeOffset.UtcNow;
@@ -145,12 +149,6 @@ public sealed class DiaryEntriesController(ApplicationDbContext database) : Cont
 
     private static bool IsValid(UpsertDiaryRequest request, out string error)
     {
-        if (string.IsNullOrWhiteSpace(request.CriticName) || request.CriticName.Length > 64)
-        {
-            error = "批評者名稱需介於 1 至 64 個字元。";
-            return false;
-        }
-
         if (request.Answers.ValueKind != JsonValueKind.Object)
         {
             error = "日記內容格式不正確。";

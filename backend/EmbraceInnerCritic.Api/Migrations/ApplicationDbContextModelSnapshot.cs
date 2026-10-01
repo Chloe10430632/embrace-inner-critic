@@ -35,7 +35,9 @@ namespace EmbraceInnerCritic.Api.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("CriticName")
-                        .HasColumnType("text");
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasDefaultValue("山姆");
 
                     b.Property<int>("DiaryEntryCount")
                         .HasColumnType("integer");

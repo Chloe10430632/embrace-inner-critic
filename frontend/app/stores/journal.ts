@@ -95,7 +95,7 @@ export const useJournalStore = defineStore('journal', () => {
     try {
       const entry = await $api<JournalEntry>(editingEntryId.value ? `/api/diary-entries/${editingEntryId.value}` : '/api/diary-entries', {
         method: editingEntryId.value ? 'PUT' : 'POST',
-        body: { criticName: onboarding.confirmedName, answers: cloneAnswers(), isComplete }
+        body: { answers: cloneAnswers(), isComplete }
       })
       const index = entries.value.findIndex(item => item.id === entry.id)
       index >= 0 ? entries.value.splice(index, 1, entry) : entries.value.unshift(entry)

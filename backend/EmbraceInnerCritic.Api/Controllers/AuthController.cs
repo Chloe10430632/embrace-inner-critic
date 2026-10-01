@@ -32,12 +32,32 @@ public sealed class AuthController(
         return Ok(new
         {
             id = user.Id,
-            email = user.Email
+            email = user.Email,
+            criticName = user.CriticName
         });
     }
 
+    public sealed record UpdateCriticNameRequest(string? CriticName);
+
+    [HttpPut("critic-name")]
+    [Authorize]
+    public async Task<IActionResult> UpdateCriticName(UpdateCriticNameRequest request)
+    {
+        var name = request.CriticName?.Trim();
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 64)
+            return BadRequest(new { error = "批評者名稱需介於 1 至 64 個字元。" });
+
+        var user = await userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+
+        user.CriticName = name;
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded) return Problem("無法儲存批評者名稱。");
+        return Ok(new { criticName = user.CriticName });
+    }
+
     [HttpGet("google")]
-    public IActionResult Google()
+    public IActionResult Google([FromQuery] string? criticName = null)
     {
         if (string.IsNullOrWhiteSpace(configuration["Authentication:Google:ClientId"]))
         {
@@ -52,6 +72,9 @@ public sealed class AuthController(
 
         // 放外部登入需要的資訊，例如完成後的回跳位置
         var properties = signInManager.ConfigureExternalAuthenticationProperties("Google", redirectUrl);
+        var pendingName = criticName?.Trim();
+        if (!string.IsNullOrWhiteSpace(pendingName) && pendingName.Length <= 64)
+            properties.Items["criticName"] = pendingName;
         // 交給 ASP.NET Core 的 Google 驗證流程，瀏覽器會被導向 Google。
         return Challenge(properties, "Google");
     }
@@ -67,6 +90,9 @@ public sealed class AuthController(
             logger.LogWarning("Google callback did not contain external login information.");
             return Redirect(frontendBaseUrl + "/?login=failed");
         }
+
+        string? pendingCriticName = null;
+        loginInfo.AuthenticationProperties?.Items.TryGetValue("criticName", out pendingCriticName);
 
         // 已綁定 Google 帳號的本站使用者，可直接登入並取得本站的登入 Cookie。
         var signInResult = await signInManager.ExternalLoginSignInAsync(
@@ -88,7 +114,8 @@ public sealed class AuthController(
             {
                 UserName = email,
                 Email = email,
-                EmailConfirmed = true
+                EmailConfirmed = true,
+                CriticName = pendingCriticName ?? "山姆"
             };
             var createResult = await userManager.CreateAsync(user);
             if (!createResult.Succeeded)
@@ -110,6 +137,15 @@ public sealed class AuthController(
 
             // 新帳號也要登入，讓瀏覽器收到本站的登入 Cookie。
             await signInManager.SignInAsync(user, isPersistent: true);
+        }
+        else if (!string.IsNullOrWhiteSpace(pendingCriticName))
+        {
+            var user = await userManager.FindByLoginAsync(loginInfo.LoginProvider, loginInfo.ProviderKey);
+            if (user is not null && string.IsNullOrWhiteSpace(user.CriticName))
+            {
+                user.CriticName = pendingCriticName;
+                await userManager.UpdateAsync(user);
+            }
         }
 
         // 登入完成後回到前端；前端再呼叫 /api/auth/me 確認使用者。

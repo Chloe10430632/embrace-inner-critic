@@ -92,7 +92,7 @@ npm install
 npm run dev
 ```
 
-開啟終端機顯示的本機網址。瀏覽器 `localStorage` 保存初次引導完成狀態與目前的內在批評者名稱；名稱可從右上角選單修改，會立即套用到日記介面，但目前不會跨瀏覽器或裝置同步。單篇日記仍在資料庫保留儲存當時的名稱欄位，讀取舊日記不會覆寫目前名稱。建立或查看日記時需要 Google 登入，日記草稿與完成紀錄透過 ASP.NET Core API 儲存在 Supabase PostgreSQL，支援新增、讀取、修改及刪除。後端、本機 Secret 與資料庫設定請見 [backend/README.md](backend/README.md)。
+開啟終端機顯示的本機網址。瀏覽器 `localStorage` 只保存初次引導完成狀態；目前的內在批評者名稱儲存在登入者資料中，可從右上角選單修改並跨瀏覽器同步。既有帳號會以最新建立的一篇日記名稱回填目前名稱。單篇日記仍在資料庫保留儲存當時的名稱欄位，讀取舊日記不會覆寫目前名稱。建立或查看日記時需要 Google 登入，日記草稿與完成紀錄透過 ASP.NET Core API 儲存在 Supabase PostgreSQL，支援新增、讀取、修改及刪除。後端、本機 Secret 與資料庫設定請見 [backend/README.md](backend/README.md)。
 
 可執行的前端驗證：
 

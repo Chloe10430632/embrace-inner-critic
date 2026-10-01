@@ -36,7 +36,6 @@ public sealed class SecurityRegressionTests
         var database = testDatabase.Context;
         var controller = CreateController(database);
         var request = new UpsertDiaryRequest(
-            "山姆",
             ParseAnswers(new string('a', 33 * 1024)),
             false);
 
@@ -60,7 +59,7 @@ public sealed class SecurityRegressionTests
         database.DiaryEntries.AddRange(Enumerable.Range(0, 500).Select(index => NewEntry(index)));
         await database.SaveChangesAsync();
         var controller = CreateController(database);
-        var request = new UpsertDiaryRequest("山姆", ParseAnswers("可以慢慢來"), false);
+        var request = new UpsertDiaryRequest(ParseAnswers("可以慢慢來"), false);
 
         var result = await controller.Create(request);
 
@@ -84,7 +83,7 @@ public sealed class SecurityRegressionTests
         await database.SaveChangesAsync();
         await using var firstDatabase = testDatabase.CreateAdditionalContext();
         await using var secondDatabase = testDatabase.CreateAdditionalContext();
-        var request = new UpsertDiaryRequest("山姆", ParseAnswers("可以慢慢來"), false);
+        var request = new UpsertDiaryRequest(ParseAnswers("可以慢慢來"), false);
 
         var results = await Task.WhenAll(
             CreateController(firstDatabase).Create(request),
@@ -94,6 +93,27 @@ public sealed class SecurityRegressionTests
         Assert.Equal(500, await verificationDatabase.DiaryEntries.CountAsync());
         Assert.Single(results, result => result.Result is CreatedAtActionResult);
         Assert.Single(results, result => result.Result is ObjectResult { StatusCode: StatusCodes.Status429TooManyRequests });
+    }
+
+    [Fact]
+    public async Task DiaryName_UsesAccountNameAndPreservesHistoricalNameOnEdit()
+    {
+        await using var testDatabase = await CreateDatabaseAsync();
+        var database = testDatabase.Context;
+        database.Users.Add(new ApplicationUser { Id = UserId, UserName = "test@example.com", CriticName = "現在的名字" });
+        await database.SaveChangesAsync();
+        var controller = CreateController(database);
+        var request = new UpsertDiaryRequest(ParseAnswers("可以慢慢來"), false);
+
+        var created = await controller.Create(request);
+        var entry = Assert.IsType<DiaryResponse>(Assert.IsType<CreatedAtActionResult>(created.Result).Value);
+        Assert.Equal("現在的名字", entry.CriticName);
+
+        var user = await database.Users.SingleAsync();
+        user.CriticName = "新名字";
+        await database.SaveChangesAsync();
+        var updated = await controller.Update(entry.Id, request);
+        Assert.Equal("現在的名字", Assert.IsType<DiaryResponse>(Assert.IsType<OkObjectResult>(updated.Result).Value).CriticName);
     }
 
     [Fact]
@@ -176,6 +196,23 @@ public sealed class SecurityRegressionTests
         Assert.Contains("DataProtectionKeys", script);
         Assert.DoesNotContain("CREATE TABLE \"AspNetUsers\"", script);
         Assert.DoesNotContain("CREATE TABLE \"DiaryEntries\"", script);
+    }
+
+    [Fact]
+    public void CriticNameMigration_BackfillsUsersFromNewestCreatedDiary()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql("Host=localhost;Database=unused;Username=unused;Password=unused")
+            .Options;
+        using var database = new ApplicationDbContext(options);
+
+        var script = database.GetService<IMigrator>().GenerateScript(
+            "20260921095133_PersistDataProtectionKeys",
+            "20261001000000_BackfillUserCriticName");
+
+        Assert.Contains("UPDATE \"AspNetUsers\"", script);
+        Assert.Contains("ORDER BY \"UserId\", \"CreatedAt\" DESC, \"Id\" DESC", script);
+        Assert.DoesNotContain("UPDATE \"DiaryEntries\"", script);
     }
 
     private static async Task<TestDatabase> CreateDatabaseAsync()
