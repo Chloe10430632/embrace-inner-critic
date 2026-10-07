@@ -8,8 +8,7 @@ export const journalQuestions: JournalQuestion[] = [
   { key: 'critic', eyebrow: '02 · 自我批評', title: '寫下 {name} 對你說的具體內容', help: '一次只寫一句最常在你腦中響起的自我批判的想法。 照原本的樣子寫下來，不用替它修飾。', placeholder: '他說：「你時間管理真的有問題……」' },
   { key: 'emotions', eyebrow: '03 · 情緒', title: '當這句話出現，你感受到什麼？', help: '可以選很多個，最好可以用自己的方式形容。' },
   { key: 'behaviors', eyebrow: '04 · 行為', title: '把這個想法所引發「最重大」的行為記錄下來', help: '不需要判斷好壞，我們要看看這個想法如何影響你的行為決策。' },
-  { key: 'origin', eyebrow: '05 · 種子', title: '這個種子，是怎麼形成的呢？', help: '回想你第一次遇到這個自我批評的想法的時候，是什麼樣的情況導致你有這些想法？也許來自家庭、學校、老師、同儕或其他關係。也可能暫時想不到。', placeholder: '它讓我想到……' },
-  { key: 'reply', eyebrow: '06 · 重新框架', title: '假設你最要好的朋友聽見 {name} 說的話，想想他們會怎麼說？', help: '一個真正關心你的好朋友，聽見那些錯誤的評價，會如何提供你善意和支持。', placeholder: '我想對自己說……' }
+  { key: 'origin', eyebrow: '05 · 種子', title: '這個種子，是怎麼形成的呢？', help: '回想你第一次遇到這個自我批評的想法的時候，是什麼樣的情況導致你有這些想法？也許來自家庭、學校、老師、同儕或其他關係。也可能暫時想不到。', placeholder: '它讓我想到……' }
 ]
 
 export const useJournalStore = defineStore('journal', () => {
@@ -29,7 +28,10 @@ export const useJournalStore = defineStore('journal', () => {
     reply: '',
     reframedThought: '',
     nextAction: '',
-    afterActionEmotion: ''
+    afterActionEmotion: '',
+    recordedAt: '',
+    actionStartedAt: '',
+    progressCompletedAt: ''
   })
   const onboarding = useOnboardingStore()
   const auth = useAuthStore()
@@ -92,14 +94,35 @@ export const useJournalStore = defineStore('journal', () => {
   async function save(isComplete: boolean, successStage = isComplete ? 14 : 6) {
     const { $api } = useNuxtApp()
     message.value = ''
+    const answers = cloneAnswers()
+    if (successStage === 14) answers.recordedAt ||= new Date().toISOString()
+    if (successStage === 23) {
+      if (!String(answers.nextAction).trim()) {
+        message.value = '先寫下一個想試試看的小行動，再儲存。'
+        return false
+      }
+      answers.actionStartedAt = new Date().toISOString()
+      answers.progressCompletedAt = ''
+      answers.afterActionEmotion = ''
+      isComplete = false
+    }
+    if (successStage === 22) {
+      if (!String(answers.nextAction).trim() || !String(answers.afterActionEmotion).trim()) {
+        message.value = '請先記錄小行動與行動後的感受，再儲存這次進展。'
+        return false
+      }
+      answers.progressCompletedAt = new Date().toISOString()
+      isComplete = true
+    }
     try {
       const entry = await $api<JournalEntry>(editingEntryId.value ? `/api/diary-entries/${editingEntryId.value}` : '/api/diary-entries', {
         method: editingEntryId.value ? 'PUT' : 'POST',
-        body: { answers: cloneAnswers(), isComplete }
+        body: { answers, isComplete }
       })
       const index = entries.value.findIndex(item => item.id === entry.id)
       index >= 0 ? entries.value.splice(index, 1, entry) : entries.value.unshift(entry)
       editingEntryId.value = entry.id
+      Object.assign(draft, answers)
       completed.value = isComplete
       playEffect(isComplete ? 'complete' : 'paper')
       stage.value = successStage
@@ -116,18 +139,35 @@ export const useJournalStore = defineStore('journal', () => {
       draft[key] = Array.isArray(answer) ? [...answer] : typeof answer === 'string' ? answer : key === 'emotions' || key === 'behaviors' ? [] : ''
     }
     editingEntryId.value = entry.id
-    completed.value = entry.isComplete
+    if (!entry.answers.recordedAt && String(draft.nextAction).trim()) draft.actionStartedAt ||= entry.createdAt
+    if (!draft.recordedAt && isRecorded(entry)) draft.recordedAt = entry.createdAt
+    completed.value = isProgressComplete(entry)
     stage.value = 13
   }
 
   function openProgress(entry: JournalEntry) {
     open(entry)
-    stage.value = 17
+    stage.value = completed.value ? 21 : draft.actionStartedAt ? 23 : String(draft.nextAction).trim() ? 20 : 17
   }
 
   function beginProgress() {
     if (!editingEntryId.value) return
-    stage.value = 17
+    stage.value = completed.value ? 21 : draft.actionStartedAt ? 23 : String(draft.nextAction).trim() ? 20 : 17
+  }
+
+  function isProgressComplete(entry: JournalEntry) {
+    return Boolean(entry.answers.progressCompletedAt)
+      || (entry.isComplete && Boolean(String(entry.answers.afterActionEmotion || '').trim()))
+  }
+
+  function isRecorded(entry: JournalEntry) {
+    return Boolean(entry.answers.recordedAt || entry.isComplete || entry.answers.reframedThought || entry.answers.nextAction)
+  }
+
+  function entryStatus(entry: JournalEntry) {
+    if (isProgressComplete(entry)) return '已完成'
+    if (entry.answers.actionStartedAt || (!entry.answers.recordedAt && String(entry.answers.nextAction || '').trim())) return '待完成行動'
+    return isRecorded(entry) ? '已記錄' : '草稿'
   }
 
   async function remove(id: string) {
@@ -167,11 +207,6 @@ export const useJournalStore = defineStore('journal', () => {
     return [...suggested, ...selected.filter(tag => !suggested.includes(tag))]
   }
 
-  function useHardReply() {
-    draft.reply = '這真的很難，我還不知道要怎麼回答。'
-    playEffect('paper')
-  }
-
   function hasContent() {
     return Object.values(draft).some(value => Array.isArray(value) ? value.length > 0 : value.trim().length > 0)
   }
@@ -193,7 +228,7 @@ export const useJournalStore = defineStore('journal', () => {
   return {
     stage, entries, editingEntryId, completed, message, customEmotion, customBehavior,
     draft, currentQuestion, displayTitle, criticQuote, resetStore, loadEntries, requireAccess,
-    beginNew, save, open, openProgress, beginProgress, remove, toggleTag, addCustomTag, availableTags, useHardReply,
-    hasContent, formatDate, preview, displayAnswer
+    beginNew, save, open, openProgress, beginProgress, remove, toggleTag, addCustomTag, availableTags,
+    hasContent, formatDate, preview, displayAnswer, isRecorded, isProgressComplete, entryStatus
   }
 })

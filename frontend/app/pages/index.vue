@@ -80,8 +80,8 @@ async function shareSite() {
         <h2>依循五個步驟，練習把每個反芻思想放回事實中檢查。</h2>
         <p class="section-intro">完整的練習方向包含五個階段。目前網站先提供「識別」與「檢視」的引導日記；其餘三個階段是後續發展方向，尚在開發流程。</p>
         <ol class="method-path">
-          <li class="is-available"><span class="method-number">01</span><div><h3>識別</h3><p>在生活中仔細留意內在批評者在什麼情況下會出現，並抓住他實際說出的具體內容，把它拖到陽光下，很多憑空製造的恐懼就會見光死。</p></div></li>
-          <li class="is-available"><span class="method-number">02</span><div><h3>檢視</h3><p>分開記錄事件、批評性想法、情緒、行為，以及可能讓你聯想到的較早經驗。</p></div></li>
+          <li><span class="method-number">01</span><div><h3>識別</h3><p>在生活中仔細留意內在批評者在什麼情況下會出現，並抓住他實際說出的具體內容，把它拖到陽光下，很多憑空製造的恐懼就會見光死。</p></div></li>
+          <li><span class="method-number">02</span><div><h3>檢視</h3><p>分開記錄事件、批評性想法、情緒、行為，以及可能讓你聯想到的較早經驗。</p></div></li>
           <li><span class="method-number">03</span><div><h3>質問</h3><p>核對這句批評說得有道理嗎？正不正確？有什麼證據？以及它是否符合完整事實。</p></div></li>
           <li><span class="method-number">04</span><div><h3>重新定位</h3><p>改變人生唯一的方法，就是改變看待自己的方式。如果面對相同處境的是你的朋友，你會如何同理、回應並且支持他？</p></div></li>
           <li><span class="method-number">05</span><div><h3>和解</h3><p>重新理解過去形成的保護方式，逐步調整現在看待與對待自己的方法，設立對他人的界線。坦然接受你的一切，包含優點和缺點，同時接受他人有時也會對自己的選擇失望。</p></div></li>

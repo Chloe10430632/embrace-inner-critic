@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const navigationOpen = ref(false)
+const openingJournalList = ref(false)
 const soundPanel = ref(false)
 const editingName = ref(false)
 const nameDraft = ref('')
@@ -59,6 +60,22 @@ async function handleLogout() {
   await auth.logout()
 }
 
+async function openJournalList() {
+  if (openingJournalList.value) return
+  openingJournalList.value = true
+  navigationOpen.value = false
+  try {
+    const editing = (journal.stage >= 7 && journal.stage <= 13) || (journal.stage >= 17 && journal.stage <= 21)
+    if (route.path === '/journals' && editing && journal.hasContent()) {
+      if (!await journal.save(journal.completed, 6)) return
+    }
+    journal.stage = auth.user ? 6 : 16
+    await navigateTo('/journals')
+  } finally {
+    openingJournalList.value = false
+  }
+}
+
 onMounted(async () => {
   onboarding.initialize()
   window.addEventListener('pointerdown', unlockAudio, { once: true })
@@ -106,8 +123,8 @@ watch(authUser, (user) => {
           <button class="icon-button menu-button" :aria-expanded="navigationOpen" aria-controls="main-navigation" aria-label="開啟主要導覽" @click="navigationOpen = !navigationOpen"><span /><span /><span /></button>
           <nav v-if="navigationOpen" id="main-navigation" class="main-nav" :class="{ 'main-nav-editing': authUser && editingName }" aria-label="主要導覽">
             <NuxtLink to="/" :aria-current="route.path === '/' ? 'page' : undefined" @click="navigationOpen = false">首頁</NuxtLink>
-            <NuxtLink to="/introduction" :aria-current="route.path === '/introduction' ? 'page' : undefined" @click="navigationOpen = false">動畫導覽</NuxtLink>
-            <NuxtLink to="/journals" :aria-current="route.path === '/journals' ? 'page' : undefined" @click="navigationOpen = false">我的日記</NuxtLink>
+            <NuxtLink to="/introduction" :aria-current="route.path === '/introduction' ? 'page' : undefined" @click="onboarding.restart(); navigationOpen = false">動畫導覽</NuxtLink>
+            <NuxtLink to="/journals" :aria-current="route.path === '/journals' ? 'page' : undefined" @click.prevent="openJournalList">覺察日記</NuxtLink>
             <NuxtLink to="/progress" :aria-current="route.path === '/progress' ? 'page' : undefined" @click="navigationOpen = false">追蹤進展</NuxtLink>
             <button v-if="authUser && !editingName" type="button" @click="startEditingName">修改批評者名稱</button>
             <form v-else-if="authUser && editingName" class="critic-name-editor" @submit.prevent="saveName">

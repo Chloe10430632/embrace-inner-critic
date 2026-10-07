@@ -8,6 +8,9 @@ export type JournalKey =
   | 'reframedThought'
   | 'nextAction'
   | 'afterActionEmotion'
+  | 'recordedAt'
+  | 'actionStartedAt'
+  | 'progressCompletedAt'
 
 export type JournalAnswers = Record<JournalKey, string | string[]>
 

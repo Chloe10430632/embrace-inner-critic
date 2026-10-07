@@ -2,6 +2,7 @@
 import { journalQuestions } from '~/stores/journal'
 
 const route = useRoute()
+const router = useRouter()
 const ready = ref(false)
 const pendingDeleteId = ref<string | null>(null)
 const isBusy = ref(false)
@@ -16,8 +17,8 @@ const {
 const { confirmedName, completed: hasCompletedOnboarding } = storeToRefs(onboarding)
 const {
   loadEntries, beginNew: beginNewJournal, toggleTag, addCustomTag, availableTags,
-  useHardReply, save: saveJournal, open: openEntry, openProgress, beginProgress, remove: deleteEntry,
-  hasContent: hasJournalContent, formatDate: formatEntryDate, preview: entryPreview, displayAnswer
+  save: saveJournal, open: openEntry, openProgress, beginProgress, remove: deleteEntry,
+  hasContent: hasJournalContent, formatDate: formatEntryDate, preview: entryPreview, displayAnswer, isRecorded, entryStatus
 } = journalStore
 const { startGoogleLogin } = auth
 const { playEffect } = useAudio()
@@ -83,10 +84,22 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
   busyMessage.value = loadingMessage ?? (isComplete ? '正在儲存這篇日記……' : '正在儲存草稿……')
   isBusy.value = true
   try {
-    if (await saveJournal(isComplete, successStage)) await loadEntries()
+    const saved = await saveJournal(isComplete, successStage)
+    if (saved) await loadEntries()
+    return saved
   } finally {
     isBusy.value = false
   }
+}
+
+async function startAction() {
+  if (await handleSave(false, 23, '正在儲存小行動……')) await navigateTo('/progress')
+}
+
+async function returnToPreviousPage() {
+  journalStage.value = 6
+  if (typeof router.options.history.state.back === 'string') router.back()
+  else await navigateTo('/journals')
 }
 </script>
 
@@ -108,13 +121,14 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
       <p class="lead narrow">每一篇都可以慢慢寫、之後再回來修改。</p>
       <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
       <div class="journal-home-actions">
-        <button class="primary" @click="beginNewJournal">寫一篇新日記 <span>→</span></button>
-        <NuxtLink class="secondary" to="/progress">查看追蹤進展</NuxtLink>
+        <button class="primary" @click="beginNewJournal">新增覺察日記 <span>+</span></button>
+        <NuxtLink class="secondary" to="/progress">追蹤進展列表</NuxtLink>
       </div>
       <div v-if="entries.length" class="entry-list">
         <article v-for="entry in entries" :key="entry.id" class="entry-card" @click="openEntry(entry)">
           <div class="entry-content">
-            <span>{{ formatEntryDate(entry.createdAt) }} · {{ entry.isComplete ? '已完成' : '草稿' }}</span>
+            <span>{{ formatEntryDate(entry.createdAt) }}</span>
+            <span class="entry-status" :data-status="entryStatus(entry)">{{ entryStatus(entry) }}</span>
             <div class="entry-preview">
               <div><span>觸發情境</span><p>{{ entryPreview(entry, 'trigger') }}</p></div>
               <div><span>{{ confirmedName }} 的批評</span><p>{{ entryPreview(entry, 'critic') }}</p></div>
@@ -122,7 +136,7 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
           </div>
           <div class="entry-actions">
             <button type="button" class="secondary" @click.stop="openEntry(entry)">閱讀／修改</button>
-            <button v-if="entry.isComplete" type="button" class="progress-button" @click.stop="openProgress(entry)">追蹤進展</button>
+            <button v-if="isRecorded(entry)" type="button" class="progress-button" @click.stop="openProgress(entry)">追蹤進展</button>
             <button type="button" class="delete-button" @click.stop="requestDelete(entry.id)">刪除</button>
           </div>
         </article>
@@ -131,7 +145,7 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
       <!-- <NuxtLink class="text-button" to="/">回到歡迎頁</NuxtLink> -->
     </section>
 
-    <section v-else-if="journalStage >= 7 && journalStage <= 12" :key="`question-${journalStage}`" class="scene journal-scene">
+    <section v-else-if="journalStage >= 7 && journalStage <= 11" :key="`question-${journalStage}`" class="scene journal-scene">
       <div class="journal-topline">
         <button class="back-button" @click="journalStage--">← 返回</button>
         <span>{{ currentQuestion.eyebrow }}</span>
@@ -154,9 +168,8 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
       <textarea v-else v-model="journal[currentQuestion.key] as string" :placeholder="currentQuestion.placeholder" rows="5" />
 
       <div class="journal-actions">
-        <button v-if="currentQuestion.key === 'origin' || currentQuestion.key === 'reply'" class="text-button" @click="next()">這題先跳過</button>
-        <!-- <button v-if="currentQuestion.key === 'reply'" class="secondary" @click="useHardReply">我還不知道</button> -->
-        <button class="primary" @click="journalStage === 12 ? journalStage = 13 : next(journalStage === 8 ? 'paper' : 'tap')">{{ journalStage === 12 ? '完成這次練習' : '下一步' }} <span>→</span></button>
+        <button v-if="currentQuestion.key === 'origin'" class="text-button" @click="journalStage = 13">這題先跳過</button>
+        <button class="primary" @click="journalStage === 11 ? journalStage = 13 : next(journalStage === 8 ? 'paper' : 'tap')">{{ journalStage === 11 ? '完成這次紀錄' : '下一步' }} <span>→</span></button>
       </div>
       <button class="help-link inline-help" @click="journalStage = 15">我現在需要協助</button>
     </section>
@@ -167,13 +180,13 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
       <p class="lead">練習思考看看，你的負面批評是如何影響你的情緒與行為</p>
       <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
       <div class="review-grid">
-        <article v-for="question in journalQuestions" :key="question.key"><span>{{ question.eyebrow }}</span><p>{{ displayAnswer(question.key) }}</p></article>
+        <article v-for="question in journalQuestions" :key="question.key" :class="{ 'review-origin': question.key === 'origin' }"><span>{{ question.eyebrow }}</span><p>{{ displayAnswer(question.key) }}</p></article>
       </div>
       <div class="review-actions">
         <button type="button" class="text-button review-return-link" @click="journalStage = 6">← 回到我的日記</button>
         <div class="review-action-buttons">
           <button class="secondary" @click="journalStage = 7">修改</button>
-          <button class="primary" @click="handleSave(true)">{{ editingEntryId ? '確認' : '儲存' }} </button>
+          <button class="primary" @click="handleSave(completed, 14, '正在儲存覺察紀錄……')">{{ editingEntryId ? '確認' : '儲存' }} </button>
         </div>
       </div>
     </section>
@@ -218,6 +231,7 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
       <p class="eyebrow">追蹤進展 · 03</p>
       <h2>如果不只聽批評的聲音，<br>這件事還能怎麼理解？</h2>
       <p class="lead narrow">重新框架不是強迫自己正向，而是找一個更貼近完整事實、也能支持現在自己的說法。</p>
+      <p class="lead narrow">如果你最要好的朋友聽見這句話，他會如何理解這件事、回應並支持你？</p>
       <article class="progress-focus-card progress-focus-card-compact">
         <span>{{ confirmedName }} 當時說</span>
         <p>「{{ journal.critic || '今天沒有寫下這句話' }}」</p>
@@ -234,11 +248,24 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
       <h2>現在可以馬上做的<br>最小一步是什麼？</h2>
       <p class="lead narrow">行動越小、越具體，越容易開始。它可以只是打開文件、寫下一句話，或傳出一則訊息。</p>
       <textarea v-model="journal.nextAction as string" placeholder="例如：先打開文件，寫下第一個小標題。" rows="4" />
+      <p class="lead narrow">先去試試看，完成後隨時回來，記錄當時的感受。</p>
+      <p v-if="authMessage" class="auth-message" role="status">{{ authMessage }}</p>
       <div class="progress-actions progress-actions-wrap">
         <button class="secondary" @click="journalStage = 19">← 返回</button>
-        <button class="text-button" @click="handleSave(true, 6, '正在保存目前的進展……')">儲存，稍後再回來</button>
-        <button class="primary" @click="journalStage = 21">我去做這個小行動 <span>→</span></button>
+        <button class="primary" @click="startAction">儲存，先去做這個小行動 <span>→</span></button>
       </div>
+    </section>
+
+    <section v-else-if="journalStage === 23" key="progress-action-return" class="scene progress-scene progress-return-scene">
+      <p class="eyebrow">回來記錄進展</p>
+      <h2>你已經試過這個小行動了嗎？</h2>
+      <article class="progress-focus-card progress-return-card"><span>你想試試看的小行動</span><p>{{ journal.nextAction }}</p></article>
+      <p class="lead narrow">照自己的步調就好。試過之後，再回來記錄真實的感受。</p>
+      <div class="progress-actions progress-return-actions">
+        <button class="secondary" @click="returnToPreviousPage">還沒做，稍後再來</button>
+        <button class="primary" @click="journalStage = 21">我已經試過，記錄感受 <span>→</span></button>
+      </div>
+      <button class="text-button progress-return-edit" @click="journalStage = 20">修改小行動</button>
     </section>
 
     <section v-else-if="journalStage === 21" key="progress-emotion" class="scene progress-scene">
@@ -246,8 +273,9 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
       <h2>做完這個小行動後，<br>你現在感受到什麼？</h2>
       <p class="lead narrow">不需要變得更開心才算有進展。請照現在真實的感受寫下來。</p>
       <textarea v-model="journal.afterActionEmotion as string" placeholder="例如：還是有點緊張，但比剛才多了一點踏實。" rows="4" />
+      <p v-if="authMessage" class="auth-message" role="status">{{ authMessage }}</p>
       <div class="progress-actions">
-        <button class="secondary" @click="journalStage = 20">← 返回</button>
+        <button class="secondary" @click="journalStage = 23">← 返回</button>
         <button class="primary" @click="handleSave(true, 22, '正在儲存這次進展……')">儲存這次進展 <span>→</span></button>
       </div>
     </section>
@@ -261,13 +289,12 @@ async function handleSave(isComplete: boolean, successStage?: number, loadingMes
     </section>
 
     <section v-else-if="journalStage === 16" key="login" class="scene compact-scene">
-      <div class="blank-node"><span>↗</span></div>
+      <div class="blank-node" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" /></svg></div>
       <p class="eyebrow">寫日記前</p>
-      <h2>先登入，才可以把<br>這一頁留給自己。</h2>
-      <p class="lead narrow">你的日記會只屬於登入的帳號；完成登入後，就可以建立、修改、查看與刪除自己的日記。</p>
+      <h2>您目前尚未登入</h2>
+      <p class="lead narrow">完成登入後，就可以建立、修改、查看與刪除自己的日記。</p>
       <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
-      <button class="primary" @click="startGoogleLogin">使用 Google 登入 <span>→</span></button>
-      <NuxtLink class="text-button" :to="hasCompletedOnboarding ? '/' : '/introduction'">先回去看看</NuxtLink>
+      <button class="primary" @click="startGoogleLogin"><img class="google-login-logo" src="/google-logo.svg" width="20" height="20" alt="" aria-hidden="true">使用 Google 登入 <span>→</span></button>
     </section>
 
     <section v-else key="safety" class="scene safety-scene">
