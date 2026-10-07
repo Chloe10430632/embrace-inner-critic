@@ -1,6 +1,5 @@
 <script setup lang="ts">
 const onboarding = useOnboardingStore()
-const journal = useJournalStore()
 const { stage: introductionStage, lessonOne, lessonTwo, criticName } = storeToRefs(onboarding)
 const { effectsOn, setSound, playEffect } = useAudio()
 
@@ -29,8 +28,7 @@ function advanceLessonTwo() {
 
 async function startJournal() {
   onboarding.markCompleted()
-  await navigateTo('/journals')
-  await journal.beginNew()
+  await navigateTo('/journals?new=1')
 }
 
 onMounted(() => {

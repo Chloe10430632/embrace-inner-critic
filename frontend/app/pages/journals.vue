@@ -30,7 +30,10 @@ onMounted(async () => {
       await loadEntries()
       const progressEntryId = typeof route.query.progress === 'string' ? route.query.progress : ''
       const progressEntry = entries.value.find(entry => entry.id === progressEntryId)
-      if (progressEntry) openProgress(progressEntry)
+      if (route.query.new === '1') {
+        await beginNewJournal()
+        await navigateTo('/journals', { replace: true })
+      } else if (progressEntry) openProgress(progressEntry)
       else if (journalStage.value < 6 || journalStage.value > 16 || journalStage.value === 16) journalStage.value = 6
     } else {
       journalStage.value = 16

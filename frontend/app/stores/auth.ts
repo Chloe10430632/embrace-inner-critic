@@ -27,8 +27,12 @@ export const useAuthStore = defineStore('auth', () => {
     if (!import.meta.client) return
     const config = useRuntimeConfig()
     const pendingName = useOnboardingStore().pendingName
-    const query = pendingName ? `?criticName=${encodeURIComponent(pendingName)}` : ''
-    window.location.assign(config.public.apiBase + '/api/auth/google' + query)
+    const route = useRouter().currentRoute.value
+    const returnUrl = route.path === '/progress' ? '/progress'
+      : route.query.new === '1' ? '/journals?new=1' : '/journals'
+    const query = new URLSearchParams({ returnUrl })
+    if (pendingName) query.set('criticName', pendingName)
+    window.location.assign(config.public.apiBase + '/api/auth/google?' + query.toString())
   }
 
   async function updateCriticName(name: string) {

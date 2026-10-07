@@ -15,8 +15,7 @@ async function startJourney() {
 
 async function startJournal() {
   onboarding.markCompleted()
-  await navigateTo('/journals')
-  await journal.beginNew()
+  await navigateTo('/journals?new=1')
 }
 
 async function shareSite() {
