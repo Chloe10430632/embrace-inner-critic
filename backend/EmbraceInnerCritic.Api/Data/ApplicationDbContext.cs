@@ -9,11 +9,28 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     : IdentityDbContext<ApplicationUser>(options), IDataProtectionKeyContext
 {
     public DbSet<DiaryEntry> DiaryEntries => Set<DiaryEntry>();
+    public DbSet<StrengthEntry> StrengthEntries => Set<StrengthEntry>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<StrengthEntry>(entity =>
+        {
+            entity.Property(entry => entry.Event).HasMaxLength(2000);
+            entity.Property(entry => entry.Notes).HasMaxLength(4000);
+            entity.Property(entry => entry.Tags).HasConversion(
+                tags => System.Text.Json.JsonSerializer.Serialize(tags, (System.Text.Json.JsonSerializerOptions?)null),
+                json => System.Text.Json.JsonSerializer.Deserialize<string[]>(json, (System.Text.Json.JsonSerializerOptions?)null)!)
+                .Metadata.SetValueComparer(new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<string[]>(
+                    (left, right) => left!.SequenceEqual(right!),
+                    tags => tags.Aggregate(0, (hash, tag) => HashCode.Combine(hash, tag.GetHashCode())),
+                    tags => tags.ToArray()));
+            entity.HasIndex(entry => new { entry.UserId, entry.CreatedAt, entry.Id });
+            entity.HasOne(entry => entry.User).WithMany().HasForeignKey(entry => entry.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         builder.Entity<ApplicationUser>(entity =>
         {

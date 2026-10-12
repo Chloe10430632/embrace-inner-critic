@@ -6,5 +6,6 @@ public sealed class ApplicationUser : IdentityUser
 {
     public string CriticName { get; set; } = "山姆";
     public int DiaryEntryCount { get; set; }
+    public int StrengthEntryCount { get; set; }
     public ICollection<DiaryEntry> DiaryEntries { get; } = new List<DiaryEntry>();
 }

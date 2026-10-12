@@ -28,7 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
     const config = useRuntimeConfig()
     const pendingName = useOnboardingStore().pendingName
     const route = useRouter().currentRoute.value
-    const returnUrl = route.path === '/progress' ? '/progress'
+    const returnUrl = route.path === '/strengths' ? '/strengths' : route.path === '/progress' ? '/progress'
       : route.query.new === '1' ? '/journals?new=1' : '/journals'
     const query = new URLSearchParams({ returnUrl })
     if (pendingName) query.set('criticName', pendingName)

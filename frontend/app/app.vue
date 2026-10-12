@@ -122,11 +122,12 @@ watch(authUser, (user) => {
         <div ref="navigationWrap" class="navigation-wrap">
           <button class="icon-button menu-button" :aria-expanded="navigationOpen" aria-controls="main-navigation" aria-label="開啟主要導覽" @click="navigationOpen = !navigationOpen"><span /><span /><span /></button>
           <nav v-if="navigationOpen" id="main-navigation" class="main-nav" :class="{ 'main-nav-editing': authUser && editingName }" aria-label="主要導覽">
-            <NuxtLink to="/" :aria-current="route.path === '/' ? 'page' : undefined" @click="navigationOpen = false">首頁</NuxtLink>
-            <NuxtLink to="/introduction" :aria-current="route.path === '/introduction' ? 'page' : undefined" @click="onboarding.restart(); navigationOpen = false">動畫導覽</NuxtLink>
-            <NuxtLink to="/journals" :aria-current="route.path === '/journals' ? 'page' : undefined" @click.prevent="openJournalList">覺察日記</NuxtLink>
-            <NuxtLink to="/progress" :aria-current="route.path === '/progress' ? 'page' : undefined" @click="navigationOpen = false">追蹤進展</NuxtLink>
-            <button v-if="authUser && !editingName" type="button" @click="startEditingName">修改批評者名稱</button>
+            <NuxtLink to="/" :aria-current="route.path === '/' ? 'page' : undefined" @click="navigationOpen = false"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7" /></svg><span>首頁</span></NuxtLink>
+            <NuxtLink to="/introduction" :aria-current="route.path === '/introduction' ? 'page' : undefined" @click="onboarding.restart(); navigationOpen = false"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="m10 8 6 4-6 4z" /></svg><span>動畫導覽</span></NuxtLink>
+            <NuxtLink to="/journals" :aria-current="route.path === '/journals' ? 'page' : undefined" @click.prevent="openJournalList"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6a3 3 0 0 1 3 3v14a3 3 0 0 0-3-3H4zM13 7a3 3 0 0 1 3-3h4v14h-4a3 3 0 0 0-3 3" /></svg><span>覺察日記</span></NuxtLink>
+            <NuxtLink to="/progress" :aria-current="route.path === '/progress' ? 'page' : undefined" @click="navigationOpen = false"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h16M8 15l4-5 4 2 4-7" /></svg><span>追蹤進展</span></NuxtLink>
+            <NuxtLink to="/strengths" :aria-current="route.path === '/strengths' ? 'page' : undefined" @click="navigationOpen = false"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z" /></svg><span>看見我的力量</span></NuxtLink>
+            <button v-if="authUser && !editingName" type="button" @click="startEditingName"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2 2 0 0 0-5-5L4 14z" /></svg><span>修改批評者名稱</span></button>
             <form v-else-if="authUser && editingName" class="critic-name-editor" @submit.prevent="saveName">
               <label for="critic-name-input">內在批評者的名稱</label>
               <input id="critic-name-input" v-model="nameDraft" maxlength="64" autocomplete="off" :disabled="savingName" @input="nameError = ''">
@@ -136,7 +137,7 @@ watch(authUser, (user) => {
                 <button type="submit" :disabled="savingName">{{ savingName ? '儲存中…' : '儲存' }}</button>
               </div>
             </form>
-            <button v-if="authUser" type="button" @click="handleLogout">登出</button>
+            <button v-if="authUser" type="button" @click="handleLogout"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H4v16h5M9 12h12m-4-4 4 4-4 4" /></svg><span>登出</span></button>
           </nav>
         </div>
       </div>
@@ -145,3 +146,11 @@ watch(authUser, (user) => {
     <NuxtPage />
   </main>
 </template>
+
+<style scoped>
+.main-nav { width:180px; max-width:calc(100vw - 24px); }
+.main-nav.main-nav-editing { width:min(250px,calc(100vw - 24px)); }
+.main-nav > :is(a,button) { display:flex; align-items:center; gap:10px; }
+.main-nav .nav-icon { flex-shrink:0; }
+.main-nav > :is(a,button) span { white-space:nowrap; }
+</style>

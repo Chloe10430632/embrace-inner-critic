@@ -36,6 +36,7 @@ namespace EmbraceInnerCritic.Api.Migrations
 
                     b.Property<string>("CriticName")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("text")
                         .HasDefaultValue("山姆");
 
@@ -74,6 +75,9 @@ namespace EmbraceInnerCritic.Api.Migrations
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
+
+                    b.Property<int>("StrengthEntryCount")
+                        .HasColumnType("integer");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
@@ -130,6 +134,43 @@ namespace EmbraceInnerCritic.Api.Migrations
                     b.HasIndex("UserId", "UpdatedAt");
 
                     b.ToTable("DiaryEntries");
+                });
+
+            modelBuilder.Entity("EmbraceInnerCritic.Api.Models.StrengthEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Event")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CreatedAt", "Id");
+
+                    b.ToTable("StrengthEntries");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -287,6 +328,17 @@ namespace EmbraceInnerCritic.Api.Migrations
                 {
                     b.HasOne("EmbraceInnerCritic.Api.Models.ApplicationUser", "User")
                         .WithMany("DiaryEntries")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("EmbraceInnerCritic.Api.Models.StrengthEntry", b =>
+                {
+                    b.HasOne("EmbraceInnerCritic.Api.Models.ApplicationUser", "User")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

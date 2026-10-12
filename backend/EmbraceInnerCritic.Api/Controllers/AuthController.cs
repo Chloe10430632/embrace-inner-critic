@@ -72,7 +72,7 @@ public sealed class AuthController(
 
         // 放外部登入需要的資訊，例如完成後的回跳位置
         var properties = signInManager.ConfigureExternalAuthenticationProperties("Google", redirectUrl);
-        properties.Items["returnUrl"] = returnUrl is "/journals" or "/journals?new=1" or "/progress"
+        properties.Items["returnUrl"] = returnUrl is "/journals" or "/journals?new=1" or "/progress" or "/strengths"
             ? returnUrl : "/journals";
         var pendingName = criticName?.Trim();
         if (!string.IsNullOrWhiteSpace(pendingName) && pendingName.Length <= 64)
@@ -153,7 +153,7 @@ public sealed class AuthController(
         // 登入完成後回到前端；前端再呼叫 /api/auth/me 確認使用者。
         string? returnUrl = null;
         loginInfo.AuthenticationProperties?.Items.TryGetValue("returnUrl", out returnUrl);
-        var destination = returnUrl is "/journals" or "/journals?new=1" or "/progress"
+        var destination = returnUrl is "/journals" or "/journals?new=1" or "/progress" or "/strengths"
             ? returnUrl : "/journals";
         var separator = destination.Contains('?') ? "&" : "?";
         return Redirect(frontendBaseUrl.TrimEnd('/') + destination + separator + "login=success");
