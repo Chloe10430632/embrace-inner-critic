@@ -1,4 +1,4 @@
-import type { JournalAnswers, JournalEntry, JournalKey, JournalQuestion } from '~/types/journal'
+import type { JournalAnswers, JournalEntry, JournalSort, JournalKey, JournalQuestion } from '~/types/journal'
 
 const emotions = ['羞恥', '焦慮', '害怕', '憤怒', '難過', '挫折', '孤單', '無力', '麻木']
 const behaviors = ['逃避', '討好', '拖延', '反擊', '僵住', '過度工作', '反覆確認', '責怪自己', '放棄']
@@ -58,6 +58,7 @@ export const useJournalStore = defineStore('journal', () => {
   }
 
   async function loadEntries() {
+    message.value = ''
     const { $api } = useNuxtApp()
     try {
       const loaded: JournalEntry[] = []
@@ -170,6 +171,14 @@ export const useJournalStore = defineStore('journal', () => {
     return isRecorded(entry) ? '已記錄' : '草稿'
   }
 
+  function listEntries(status: string, sort: JournalSort, progressOnly = false) {
+    const field = sort.startsWith('updated') ? 'updatedAt' : 'createdAt'
+    const direction = sort.endsWith('asc') ? 1 : -1
+    return entries.value
+      .filter(entry => (!progressOnly || isRecorded(entry)) && (!status || entryStatus(entry) === status))
+      .sort((a, b) => direction * (Date.parse(a[field] ?? a.createdAt) - Date.parse(b[field] ?? b.createdAt)))
+  }
+
   async function remove(id: string) {
     const { $api } = useNuxtApp()
     message.value = ''
@@ -229,6 +238,6 @@ export const useJournalStore = defineStore('journal', () => {
     stage, entries, editingEntryId, completed, message, customEmotion, customBehavior,
     draft, currentQuestion, displayTitle, criticQuote, resetStore, loadEntries, requireAccess,
     beginNew, save, open, openProgress, beginProgress, remove, toggleTag, addCustomTag, availableTags,
-    hasContent, formatDate, preview, displayAnswer, isRecorded, isProgressComplete, entryStatus
+    hasContent, formatDate, preview, displayAnswer, isRecorded, isProgressComplete, entryStatus, listEntries
   }
 })

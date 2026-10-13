@@ -97,3 +97,29 @@ test('failed action saves keep the user on the form without marking progress', a
   assert.equal(store.draft.actionStartedAt, '')
   assert.equal(store.completed.value, false)
 })
+
+test('list filters exact statuses and sorts timestamps without changing stored order', () => {
+  const { store } = createStore()
+  const fixture = (id, createdAt, updatedAt, answers = {}, isComplete = false) => ({
+    id, createdAt, updatedAt, isComplete, answers
+  })
+  store.entries.value = [
+    fixture('recorded', '2026-01-01', '2026-01-04', { recordedAt: '2026-01-01' }),
+    fixture('complete', '2026-01-03', '2026-01-03', { recordedAt: '2026-01-03', progressCompletedAt: '2026-01-03' }),
+    fixture('action', '2026-01-02', '2026-01-05', { recordedAt: '2026-01-02', actionStartedAt: '2026-01-05' }),
+    fixture('draft', '2026-01-04', '2026-01-04'),
+    fixture('legacy', '2026-01-06', undefined, { afterActionEmotion: 'calmer' }, true)
+  ]
+  const ids = (status, order, progressOnly = false) => Array.from(store.listEntries(status, order, progressOnly), entry => entry.id)
+  assert.deepEqual(ids('已記錄', 'updated-desc'), ['recorded'])
+  assert.deepEqual(ids('待完成行動', 'updated-desc'), ['action'])
+  assert.deepEqual(ids('已完成', 'updated-desc'), ['legacy', 'complete'])
+  assert.deepEqual(ids('草稿', 'updated-desc'), ['draft'])
+  assert.deepEqual(ids('', 'created-asc'), ['recorded', 'action', 'complete', 'draft', 'legacy'])
+  assert.deepEqual(ids('', 'created-desc'), ['legacy', 'draft', 'complete', 'action', 'recorded'])
+  assert.deepEqual(ids('', 'updated-asc'), ['complete', 'recorded', 'draft', 'action', 'legacy'])
+  assert.deepEqual(ids('', 'updated-desc'), ['legacy', 'action', 'recorded', 'draft', 'complete'])
+  assert.deepEqual(ids('草稿', 'updated-desc', true), [])
+  assert.deepEqual(ids('', 'updated-desc', true), ['legacy', 'action', 'recorded', 'complete'])
+  assert.deepEqual(Array.from(store.entries.value, entry => entry.id), ['recorded', 'complete', 'action', 'draft', 'legacy'])
+})

@@ -149,14 +149,11 @@ watch(signedIn, (value) => { if (!value) {
 </script>
 
 <template>
-  <section v-if="!ready" class="scene compact-scene" role="status"><span class="journal-spinner" aria-hidden="true" /><p class="page-loading-caption">載入力量紀錄</p></section>
-  <section v-else-if="!signedIn" class="scene compact-scene">
-    <p class="eyebrow">看見我的力量</p><h2>留下值得記住的事，<br>慢慢看見自己的力量。</h2>
-    <p class="lead narrow">登入後，就能儲存與回顧自己的經驗。不必是大成就，也可以是照顧自己的小事。</p>
-    <button class="primary" @click="auth.startGoogleLogin">使用 Google 登入 <span>→</span></button>
-    <NuxtLink class="text-button" to="/">回到首頁</NuxtLink>
-  </section>
-  <section v-else class="scene strengths-scene">
+  <Transition name="page" mode="out-in">
+  <section v-if="!ready" key="loading" class="scene compact-scene" role="status"><span class="journal-spinner" aria-hidden="true" /><p class="page-loading-caption">載入力量紀錄</p></section>
+  <LoginPrompt v-else-if="!signedIn" key="login" eyebrow="看見我的力量" description="完成登入，儲存/回顧自己成功的經驗，很小的事也是成功的證據。" />
+
+  <section v-else key="strengths-home" class="scene strengths-scene">
     <header class="strengths-heading"><div><p class="eyebrow">看見我的力量</p><h2>這些成功經驗，也是我的一部分。</h2><p class="lead">練習每天早上寫下三件你做得好的事情，也許你擅長寫作，或是你總是守時、幽默風趣等。累積起來能拿來反駁內在批評者的材料會越來越多。</p></div></header>
     <p v-if="message && !editing" role="alert" class="strengths-message">{{ message }}</p>
     <p v-if="notice" role="status">{{ notice }}</p>
@@ -238,6 +235,7 @@ watch(signedIn, (value) => { if (!value) {
     </div>
     <button v-if="!editing" type="button" class="strengths-create" :disabled="busy || loading" @click="open()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg><span>記一件事</span></button>
   </section>
+  </Transition>
   <Teleport to="body">
     <div v-if="deletingId && !busy" class="journal-modal-backdrop" role="presentation">
       <section class="journal-modal" role="alertdialog" aria-modal="true" aria-labelledby="strength-delete-title" aria-describedby="strength-delete-description">

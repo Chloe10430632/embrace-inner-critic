@@ -1,337 +1,143 @@
 <script setup lang="ts">
-import { journalQuestions } from '~/stores/journal'
+import type { JournalEntry, JournalSort } from '~/types/journal'
 
+type JournalTab = 'diary' | 'progress'
 const route = useRoute()
 const router = useRouter()
-const ready = ref(false)
-const pendingDeleteId = ref<string | null>(null)
-const isBusy = ref(false)
-const busyMessage = ref('')
 const auth = useAuthStore()
-const onboarding = useOnboardingStore()
-const journalStore = useJournalStore()
-const {
-  stage: journalStage, customEmotion, customBehavior, entries, editingEntryId, message: authMessage,
-  completed, draft: journal, currentQuestion, displayTitle, criticQuote
-} = storeToRefs(journalStore)
-const { confirmedName, completed: hasCompletedOnboarding } = storeToRefs(onboarding)
-const {
-  loadEntries, beginNew: beginNewJournal, toggleTag, addCustomTag, availableTags,
-  save: saveJournal, open: openEntry, openProgress, beginProgress, remove: deleteEntry,
-  hasContent: hasJournalContent, formatDate: formatEntryDate, preview: entryPreview, displayAnswer, isRecorded, entryStatus
-} = journalStore
-const { startGoogleLogin } = auth
-const { playEffect } = useAudio()
+const store = useJournalStore()
+const { stage, message, entries } = storeToRefs(store)
+const { confirmedName } = storeToRefs(useOnboardingStore())
+const viewOnly = ref(false)
+const ready = ref(false)
+const loading = ref(false)
+const pendingDeleteId = ref<string | null>(null)
+const deleting = ref(false)
+const statusFilter = ref('')
+const sortOrder = ref<JournalSort>('updated-desc')
+const visibleEntries = computed(() => store.listEntries(statusFilter.value, sortOrder.value, activeTab.value === 'progress'))
+const activeTab = computed<JournalTab>(() => route.query.tab === 'progress' || typeof route.query.progress === 'string' ? 'progress' : 'diary')
+const isEditing = () => !(viewOnly.value && stage.value === 13) && ((stage.value >= 7 && stage.value <= 13) || (stage.value >= 17 && stage.value <= 21) || stage.value === 23)
+
+async function load() {
+  if (loading.value) return
+  loading.value = true
+  try { await store.loadEntries() }
+  finally { loading.value = false }
+}
+
+async function applyRoute() {
+  viewOnly.value = false
+  if (route.query.view === 'safety') { stage.value = 15; return }
+  if (!auth.user) { stage.value = 16; return }
+  if (route.query.new === '1') { await store.beginNew(); return }
+  const entry = entries.value.find(item => item.id === route.query.progress)
+  if (entry) store.openProgress(entry)
+  else stage.value = 6
+}
 
 onMounted(async () => {
   try {
-    if (route.query.view === 'safety') {
-      journalStage.value = 15
-    } else if (await auth.requireUser()) {
-      await loadEntries()
-      const progressEntryId = typeof route.query.progress === 'string' ? route.query.progress : ''
-      const progressEntry = entries.value.find(entry => entry.id === progressEntryId)
-      if (route.query.new === '1') {
-        await beginNewJournal()
-        await navigateTo('/journals', { replace: true })
-      } else if (progressEntry) openProgress(progressEntry)
-      else if (journalStage.value < 6 || journalStage.value > 16 || journalStage.value === 16) journalStage.value = 6
-    } else {
-      journalStage.value = 16
-    }
-  } finally {
-    ready.value = true
+    await auth.requireUser()
+    if (auth.user) await load()
+    await applyRoute()
+  } finally { ready.value = true }
+})
+
+watch(() => [route.query.tab, route.query.progress, route.query.view, route.query.new], () => {
+  if (ready.value) void applyRoute()
+})
+
+onBeforeRouteUpdate(async (to) => {
+  if (isEditing() && store.hasContent() && (to.query.tab !== route.query.tab || to.query.progress !== route.query.progress || to.query.view !== route.query.view || to.query.new !== route.query.new)) {
+    if (!await store.save(store.completed, stage.value)) return false
   }
 })
-
-onBeforeRouteLeave(() => {
-  const isWritingJournal = journalStage.value >= 7 && journalStage.value <= 13
-  const isTrackingProgress = journalStage.value >= 17 && journalStage.value <= 21
-  if ((isWritingJournal || isTrackingProgress) && hasJournalContent()) void saveJournal(completed.value)
+onBeforeRouteLeave(async () => {
+  if (isEditing() && store.hasContent()) return await store.save(store.completed, stage.value)
 })
 
-watch(journalStage, async () => {
-  await nextTick()
-  if (import.meta.client) window.scrollTo({ top: 0, behavior: 'smooth' })
-})
-
-function next(sound: 'tap' | 'paper' = 'tap') {
-  playEffect(sound)
-  journalStage.value++
+async function selectTab(tab: JournalTab, replace = false) {
+  const target = { path: '/journals', query: tab === 'progress' ? { tab: 'progress' } : {} }
+  if (replace) await router.replace(target)
+  else await router.push(target)
 }
-
-function requestDelete(id: string) {
-  pendingDeleteId.value = id
+async function finish(tab: JournalTab = activeTab.value) {
+  await selectTab(tab, true)
 }
-
+async function beginNew() {
+  viewOnly.value = false
+  await selectTab('diary', true)
+  await store.beginNew()
+}
+async function openProgress(entry: JournalEntry) {
+  await router.push({ path: '/journals', query: { tab: 'progress', progress: entry.id } })
+}
+function viewEntry(entry: JournalEntry) {
+  viewOnly.value = true
+  store.open(entry)
+}
+function editEntry(entry: JournalEntry) {
+  viewOnly.value = false
+  store.open(entry)
+  stage.value = 7
+}
 async function confirmDelete() {
-  const id = pendingDeleteId.value
-  if (!id || isBusy.value) return
-
-  pendingDeleteId.value = null
-  busyMessage.value = '正在刪除這篇日記……'
-  isBusy.value = true
+  if (!pendingDeleteId.value || deleting.value) return
+  deleting.value = true
   try {
-    if (await deleteEntry(id)) await loadEntries()
-  } finally {
-    isBusy.value = false
-  }
-}
-
-async function handleSave(isComplete: boolean, successStage?: number, loadingMessage?: string) {
-  if (isBusy.value) return
-
-  busyMessage.value = loadingMessage ?? (isComplete ? '正在儲存這篇日記……' : '正在儲存草稿……')
-  isBusy.value = true
-  try {
-    const saved = await saveJournal(isComplete, successStage)
-    if (saved) await loadEntries()
-    return saved
-  } finally {
-    isBusy.value = false
-  }
-}
-
-async function startAction() {
-  if (await handleSave(false, 23, '正在儲存小行動……')) await navigateTo('/progress')
-}
-
-async function returnToPreviousPage() {
-  journalStage.value = 6
-  if (typeof router.options.history.state.back === 'string') router.back()
-  else await navigateTo('/journals')
+    if (await store.remove(pendingDeleteId.value)) pendingDeleteId.value = null
+  } finally { deleting.value = false }
 }
 </script>
 
 <template>
-  <div class="journal-page" :inert="isBusy || pendingDeleteId !== null" :aria-busy="isBusy">
-    <div class="map-path" aria-hidden="true">
-      <span v-for="n in 8" :key="n" class="path-dot" :class="{ lit: journalStage >= n + 5 }" />
-    </div>
-
+  <div>
     <Transition name="page" mode="out-in">
-    <section v-if="!ready" key="loading" class="scene compact-scene" role="status">
-      <span class="journal-spinner" aria-hidden="true" />
-      <p class="page-loading-caption">載入時光紀錄</p>
-    </section>
-
-    <section v-else-if="journalStage === 6" key="journal-home" class="scene journal-home-scene">
-      <p class="eyebrow">我的日記</p>
-      <h2>紀錄 {{ confirmedName }} 的慣性思考方式</h2>
-      <p class="lead narrow">每一篇都可以慢慢寫、之後再回來修改。</p>
-      <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
-      <div class="journal-home-actions">
-        <button class="primary" @click="beginNewJournal">新增覺察日記 <span>+</span></button>
-        <NuxtLink class="secondary" to="/progress">追蹤進展列表</NuxtLink>
-      </div>
-      <div v-if="entries.length" class="entry-list">
-        <article v-for="entry in entries" :key="entry.id" class="entry-card" @click="openEntry(entry)">
-          <div class="entry-content">
-            <span>{{ formatEntryDate(entry.createdAt) }}</span>
-            <span class="entry-status" :data-status="entryStatus(entry)">{{ entryStatus(entry) }}</span>
-            <div class="entry-preview">
-              <div><span>觸發情境</span><p>{{ entryPreview(entry, 'trigger') }}</p></div>
-              <div><span>{{ confirmedName }} 的批評</span><p>{{ entryPreview(entry, 'critic') }}</p></div>
-            </div>
-          </div>
-          <div class="entry-actions">
-            <button type="button" class="secondary" @click.stop="openEntry(entry)">閱讀／修改</button>
-            <button v-if="isRecorded(entry)" type="button" class="progress-button" @click.stop="openProgress(entry)">追蹤進展</button>
-            <button type="button" class="delete-button" @click.stop="requestDelete(entry.id)">刪除</button>
-          </div>
-        </article>
-      </div>
-      <p v-else class="empty-journals">第一篇不需要寫得完整，從一個當下的聲音開始就好。</p>
-      <!-- <NuxtLink class="text-button" to="/">回到歡迎頁</NuxtLink> -->
-    </section>
-
-    <section v-else-if="journalStage >= 7 && journalStage <= 11" :key="`question-${journalStage}`" class="scene journal-scene">
-      <div class="journal-topline">
-        <button class="back-button" @click="journalStage--">← 返回</button>
-        <span>{{ currentQuestion.eyebrow }}</span>
-        <button class="save-link" @click="handleSave(false)">儲存並離開</button>
-      </div>
-      <div v-if="journalStage > 8 && criticQuote" class="critic-note"><span>{{ confirmedName }} 剛才說</span>「{{ criticQuote }}」</div>
-      <h2>{{ displayTitle }}</h2>
-      <p class="lead narrow">{{ currentQuestion.help }}</p>
-
-      <div v-if="currentQuestion.key === 'emotions' || currentQuestion.key === 'behaviors'" class="tag-area">
-        <div class="tag-cloud">
-          <button v-for="tag in availableTags(currentQuestion.key as 'emotions' | 'behaviors')" :key="tag" type="button" class="tag" :class="{ selected: (journal[currentQuestion.key] as string[]).includes(tag) }" @click="toggleTag(currentQuestion.key as 'emotions' | 'behaviors', tag)">#{{ tag }}</button>
+      <section v-if="!ready" key="loading" class="scene compact-scene" role="status"><span class="journal-spinner" aria-hidden="true" /><p class="page-loading-caption">載入時光紀錄</p></section>
+      <LoginPrompt v-else-if="stage === 16" key="login" eyebrow="覺察日記" description="完成登入，建立自己的日記，並回顧重新框架與小行動的進展。" :message="message" />
+      <section v-else-if="stage === 6" key="workspace" class="scene journal-workspace" :inert="pendingDeleteId !== null">
+        <header class="workspace-heading"><p class="eyebrow">覺察日記</p><h2>記下當時的聲音，<br>也看見自己走過的路。</h2><p class="lead">紀錄 {{ confirmedName }} 的慣性思考方式，再慢慢練習回應。每一篇都可以之後再回來修改。</p></header>
+        <div class="workspace-navigation">
+        <div class="workspace-tabs" role="group" aria-label="日記瀏覽模式">
+          <button type="button" :aria-pressed="activeTab === 'diary'" aria-controls="diary-panel" @click="selectTab('diary')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>我的日記</button>
+          <button type="button" :aria-pressed="activeTab === 'progress'" aria-controls="progress-panel" @click="selectTab('progress')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 4v16h16M8 15l4-5 4 2 4-7" /></svg>追蹤進展</button>
         </div>
-        <form class="custom-tag" @submit.prevent="addCustomTag(currentQuestion.key as 'emotions' | 'behaviors')">
-          <input v-if="currentQuestion.key === 'emotions'" v-model="customEmotion" placeholder="加入自己的感受">
-          <input v-else v-model="customBehavior" placeholder="加入自己的行為">
-          <button type="submit">＋ 加入</button>
-        </form>
-      </div>
-      <textarea v-else v-model="journal[currentQuestion.key] as string" :placeholder="currentQuestion.placeholder" rows="5" />
-
-      <div class="journal-actions">
-        <button v-if="currentQuestion.key === 'origin'" class="text-button" @click="journalStage = 13">這題先跳過</button>
-        <button class="primary" @click="journalStage === 11 ? journalStage = 13 : next(journalStage === 8 ? 'paper' : 'tap')">{{ journalStage === 11 ? '完成這次紀錄' : '下一步' }} <span>→</span></button>
-      </div>
-      <button class="help-link inline-help" @click="journalStage = 15">我現在需要協助</button>
-    </section>
-
-    <section v-else-if="journalStage === 13" key="review" class="scene review-scene">
-      <p class="eyebrow">回顧</p>
-      <h2>這是你看見的一次練習。</h2>
-      <p class="lead">練習思考看看，你的負面批評是如何影響你的情緒與行為</p>
-      <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
-      <div class="review-grid">
-        <article v-for="question in journalQuestions" :key="question.key" :class="{ 'review-origin': question.key === 'origin' }"><span>{{ question.eyebrow }}</span><p>{{ displayAnswer(question.key) }}</p></article>
-      </div>
-      <div class="review-actions">
-        <button type="button" class="text-button review-return-link" @click="journalStage = 6">← 回到我的日記</button>
-        <div class="review-action-buttons">
-          <button class="secondary" @click="journalStage = 7">修改</button>
-          <button class="primary" @click="handleSave(completed, 14, '正在儲存覺察紀錄……')">{{ editingEntryId ? '確認' : '儲存' }} </button>
+        <div class="workspace-list-tools"><span class="record-count" role="status">{{ visibleEntries.length }} {{ activeTab === 'diary' ? '篇日記' : '筆進展紀錄' }}</span><JournalListControls v-model:status="statusFilter" v-model:sort="sortOrder" /></div>
         </div>
-      </div>
-    </section>
-
-    <section v-else-if="journalStage === 14" key="complete" class="scene complete-scene">
-      <div class="lit-node"><span>✦</span><i/><i/><i/></div>
-      <p class="eyebrow">又有一句話被你看見了</p>
-      <h2>感謝自己的紀錄和能量</h2>
-      <p class="lead narrow">今天，你成功的捕捉了一個原本很容易被忽略的聲音。</p>
-      <button class="primary" @click="beginProgress">繼續追蹤進展 <span>→</span></button>
-      <button class="secondary completion-secondary" @click="journalStage = 6">回到我的日記</button>
-    </section>
-
-    <section v-else-if="journalStage === 17" key="progress-thought" class="scene progress-scene">
-      <p class="eyebrow">追蹤進展 · 01</p>
-      <h2>先帶著剛才看見的想法。</h2>
-      <p class="lead narrow">不需要重新寫一次，我們先把這句自我批評放在眼前。</p>
-      <article class="progress-focus-card">
-        <span>{{ confirmedName }} 當時說</span>
-        <p>「{{ journal.critic || '今天沒有寫下這句話' }}」</p>
-      </article>
-      <div class="progress-actions">
-        <button class="secondary" @click="journalStage = 6">先回到日記</button>
-        <button class="primary" @click="journalStage = 18">看看它帶來的影響 <span>→</span></button>
-      </div>
-    </section>
-
-    <section v-else-if="journalStage === 18" key="progress-impact" class="scene progress-scene">
-      <p class="eyebrow">追蹤進展 · 02</p>
-      <h2>它讓你感受到什麼，<br>又把你帶往哪裡？</h2>
-      <div class="progress-impact-grid">
-        <article><span>感受到的情緒</span><p>{{ (journal.emotions as string[]).length ? (journal.emotions as string[]).map(item => `#${item}`).join('　') : '今天沒有記錄情緒' }}</p></article>
-        <article><span>受到影響的行為</span><p>{{ (journal.behaviors as string[]).length ? (journal.behaviors as string[]).map(item => `#${item}`).join('　') : '今天沒有記錄行為' }}</p></article>
-      </div>
-      <div class="progress-actions">
-        <button class="secondary" @click="journalStage = 17">← 返回</button>
-        <button class="primary" @click="journalStage = 19">試著換一個角度 <span>→</span></button>
-      </div>
-    </section>
-
-    <section v-else-if="journalStage === 19" key="progress-reframe" class="scene progress-scene">
-      <p class="eyebrow">追蹤進展 · 03</p>
-      <h2>如果不只聽批評的聲音，<br>這件事還能怎麼理解？</h2>
-      <p class="lead narrow">重新框架不是強迫自己正向，而是找一個更貼近完整事實、也能支持現在自己的說法。</p>
-      <p class="lead narrow">如果你最要好的朋友聽見這句話，他會如何理解這件事、回應並支持你？</p>
-      <article class="progress-focus-card progress-focus-card-compact">
-        <span>{{ confirmedName }} 當時說</span>
-        <p>「{{ journal.critic || '今天沒有寫下這句話' }}」</p>
-      </article>
-      <textarea v-model="journal.reframedThought as string" placeholder="例如：我現在遇到困難，不代表我沒有能力；我可以先完成其中一小部分。" rows="5" />
-      <div class="progress-actions">
-        <button class="secondary" @click="journalStage = 18">← 返回</button>
-        <button class="primary" @click="journalStage = 20">想一個小行動 <span>→</span></button>
-      </div>
-    </section>
-
-    <section v-else-if="journalStage === 20" key="progress-action" class="scene progress-scene">
-      <p class="eyebrow">追蹤進展 · 04</p>
-      <h2>現在可以馬上做的<br>最小一步是什麼？</h2>
-      <p class="lead narrow">行動越小、越具體，越容易開始。它可以只是打開文件、寫下一句話，或傳出一則訊息。</p>
-      <textarea v-model="journal.nextAction as string" placeholder="例如：先打開文件，寫下第一個小標題。" rows="4" />
-      <p class="lead narrow">先去試試看，完成後隨時回來，記錄當時的感受。</p>
-      <p v-if="authMessage" class="auth-message" role="status">{{ authMessage }}</p>
-      <div class="progress-actions progress-actions-wrap">
-        <button class="secondary" @click="journalStage = 19">← 返回</button>
-        <button class="primary" @click="startAction">儲存，先去做這個小行動 <span>→</span></button>
-      </div>
-    </section>
-
-    <section v-else-if="journalStage === 23" key="progress-action-return" class="scene progress-scene progress-return-scene">
-      <p class="eyebrow">回來記錄進展</p>
-      <h2>你已經試過這個小行動了嗎？</h2>
-      <article class="progress-focus-card progress-return-card"><span>你想試試看的小行動</span><p>{{ journal.nextAction }}</p></article>
-      <p class="lead narrow">照自己的步調就好。試過之後，再回來記錄真實的感受。</p>
-      <div class="progress-actions progress-return-actions">
-        <button class="secondary" @click="returnToPreviousPage">還沒做，稍後再來</button>
-        <button class="primary" @click="journalStage = 21">我已經試過，記錄感受 <span>→</span></button>
-      </div>
-      <button class="text-button progress-return-edit" @click="journalStage = 20">修改小行動</button>
-    </section>
-
-    <section v-else-if="journalStage === 21" key="progress-emotion" class="scene progress-scene">
-      <p class="eyebrow">追蹤進展 · 05</p>
-      <h2>做完這個小行動後，<br>你現在感受到什麼？</h2>
-      <p class="lead narrow">不需要變得更開心才算有進展。請照現在真實的感受寫下來。</p>
-      <textarea v-model="journal.afterActionEmotion as string" placeholder="例如：還是有點緊張，但比剛才多了一點踏實。" rows="4" />
-      <p v-if="authMessage" class="auth-message" role="status">{{ authMessage }}</p>
-      <div class="progress-actions">
-        <button class="secondary" @click="journalStage = 23">← 返回</button>
-        <button class="primary" @click="handleSave(true, 22, '正在儲存這次進展……')">儲存這次進展 <span>→</span></button>
-      </div>
-    </section>
-
-    <section v-else-if="journalStage === 22" key="progress-complete" class="scene complete-scene">
-      <div class="lit-node"><span>✦</span><i/><i/><i/></div>
-      <p class="eyebrow">這次進展已經留下</p>
-      <h2>一個很小的行動，<br>也是一條新的路。</h2>
-      <p class="lead narrow">你不需要證明自己已經完全改變。願意停下來、換一個角度並做出一步，就值得被記得。</p>
-      <button class="primary" @click="journalStage = 6">回到我的日記 <span>→</span></button>
-    </section>
-
-    <section v-else-if="journalStage === 16" key="login" class="scene compact-scene">
-      <div class="blank-node" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" /></svg></div>
-      <p class="eyebrow">寫日記前</p>
-      <h2>您目前尚未登入</h2>
-      <p class="lead narrow">完成登入後，就可以建立、修改、查看與刪除自己的日記。</p>
-      <p v-if="authMessage" class="auth-message">{{ authMessage }}</p>
-      <button class="primary" @click="startGoogleLogin"><img class="google-login-logo" src="/google-logo.svg" width="20" height="20" alt="" aria-hidden="true">使用 Google 登入 <span>→</span></button>
-    </section>
-
-    <section v-else key="safety" class="scene safety-scene">
-      <div class="safety-mark">♡</div>
-      <p class="eyebrow">先照顧現在的你</p>
-      <h2>我們先停在這裡，<br>現在的安全比完成日記更重要。</h2>
-      <p class="lead narrow">這個網站無法判斷你現在是否安全，也無法提供即時救援。如果你可能立刻傷害自己或別人，請先不要獨自承受。</p>
-      <div class="safety-options">
-        <a href="tel:119"><strong>撥打 119</strong><span>緊急救護</span></a>
-        <a href="tel:110"><strong>撥打 110</strong><span>需要警方立即協助</span></a>
-        <a href="tel:1925"><strong>撥打 1925</strong><span>24 小時安心專線</span></a>
-      </div>
-      <NuxtLink class="secondary" to="/">保存草稿並回到首頁</NuxtLink>
-      <p class="safety-footnote">文字提示可能誤判或漏掉真正的危險。你不需要等網站提醒，任何時候都可以主動尋求協助。</p>
-    </section>
-    </Transition>
-  </div>
-
-  <Teleport to="body">
-    <div v-if="pendingDeleteId" class="journal-modal-backdrop" role="presentation">
-      <section class="journal-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description">
-        <p class="section-kicker">刪除日記</p>
-        <h2 id="delete-dialog-title">確定要刪除這篇日記嗎？</h2>
-        <p id="delete-dialog-description">刪除後無法復原，這篇日記的內容將不會保留。</p>
-        <div class="journal-modal-actions">
-          <button type="button" class="secondary" autofocus @click="pendingDeleteId = null">先不要</button>
-          <button type="button" class="modal-delete-button" @click="confirmDelete">確定刪除</button>
-        </div>
+        <p v-if="message" class="workspace-message" role="alert">{{ message }} <button type="button" :disabled="loading" @click="load">{{ loading ? '載入中…' : '重新載入' }}</button></p>
+        <div v-if="loading" class="workspace-loading" role="status"><span class="journal-spinner" aria-hidden="true" /><p>載入時光紀錄</p></div>
+        <Transition v-else name="page" mode="out-in">
+          <JournalEntryList v-if="activeTab === 'diary'" id="diary-panel" key="diary" :entries="visibleEntries" :filtered="Boolean(statusFilter)" :disabled="deleting" @open="viewEntry" @edit="editEntry" @progress="openProgress" @remove="pendingDeleteId = $event" />
+          <JournalProgressList v-else id="progress-panel" key="progress" :entries="visibleEntries" :filtered="Boolean(statusFilter)" @open="openProgress" @diary="selectTab('diary')" />
+        </Transition>
+        <button v-if="activeTab === 'diary'" type="button" class="journal-create" @click="beginNew"><span aria-hidden="true">＋</span>新增覺察日記</button>
       </section>
-    </div>
-
-    <div v-if="isBusy" class="journal-busy-overlay" role="status" aria-live="assertive" aria-busy="true">
-      <div class="journal-busy-card">
-        <span class="journal-spinner" aria-hidden="true" />
-        <strong>{{ busyMessage }}</strong>
-        <p>請稍候，不要關閉或重新操作按鈕。</p>
-      </div>
-    </div>
-  </Teleport>
+      <JournalPractice v-else key="practice" :view-only="viewOnly" @finish="finish" />
+    </Transition>
+    <Teleport to="body">
+      <div v-if="pendingDeleteId" class="journal-modal-backdrop" role="presentation"><section class="journal-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description" :aria-busy="deleting"><p class="section-kicker">刪除日記</p><h2 id="delete-dialog-title">確定要刪除這篇日記嗎？</h2><p id="delete-dialog-description">刪除後無法復原，這篇日記的內容將不會保留。</p><p v-if="message" role="alert">{{ message }}</p><div class="journal-modal-actions"><button type="button" class="secondary" autofocus :disabled="deleting" @click="pendingDeleteId = null">先不要</button><button type="button" class="modal-delete-button" :disabled="deleting" @click="confirmDelete">{{ deleting ? '正在刪除…' : '確定刪除' }}</button></div></section></div>
+    </Teleport>
+  </div>
 </template>
+
+<style scoped>
+.journal-workspace { width:min(1000px,calc(100% - 36px)); align-items:stretch; text-align:left; padding-bottom:calc(164px + env(safe-area-inset-bottom,0px)); }
+.workspace-heading .eyebrow { display:inline-block; width:fit-content; transform:none; }
+.workspace-heading h2 { font-size:clamp(1.6rem,4vw,2.6rem); }
+.workspace-heading .lead { max-width:650px; margin-left:0; margin-right:0; }
+.workspace-tabs { display:flex; flex-wrap:wrap; gap:4px; margin-top:0; }
+.workspace-tabs button { display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:8px 14px; border:0; border-radius:22px; background:transparent; color:var(--color-brand-muted); font:inherit; font-size:.95rem; cursor:pointer; transition:background .15s,color .15s; }
+.workspace-tabs button:hover { background:var(--color-brand-shadow-faint); color:var(--color-brand-ink); }
+.workspace-tabs button[aria-pressed=true] { background:var(--color-brand-shadow-soft); color:var(--color-brand-ink); }
+button:focus-visible { outline:2px solid var(--color-brand-ink); outline-offset:3px; }
+.workspace-navigation { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:24px; margin-bottom:20px; }
+.workspace-list-tools { display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-left:auto; }
+.record-count { color:var(--color-brand-muted); font-size:.8rem; white-space:nowrap; }
+.workspace-message { padding:14px; border:1px solid var(--color-brand-grid); border-radius:12px; }
+.workspace-message button { border:0; background:transparent; font:inherit; text-decoration:underline; cursor:pointer; }
+.workspace-loading { display:grid; justify-items:center; padding:40px 0; }
+.journal-create { position:fixed; right:max(40px,calc((100vw - 1000px) / 2)); bottom:calc(72px + env(safe-area-inset-bottom,0px)); z-index:20; display:inline-flex; align-items:center; gap:8px; min-height:52px; padding:0 20px; border:0; border-radius:16px; background:var(--color-brand-ink); color:var(--color-brand-surface); box-shadow:0 4px 16px var(--color-brand-shadow-soft); font:inherit; font-size:.9rem; font-weight:600; cursor:pointer; }
+.journal-create:hover { background:color-mix(in srgb,var(--color-brand-ink) 85%,var(--color-brand-surface)); }
+@media(max-width:600px) { .journal-create { right:calc(24px + env(safe-area-inset-right,0px)); bottom:calc(88px + env(safe-area-inset-bottom,0px)); } }
+</style>
